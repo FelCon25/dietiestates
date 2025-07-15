@@ -25,6 +25,6 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
-        return user;
+        return { ...user, sessionId: payload.sessionId };
     }
 }

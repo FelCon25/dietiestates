@@ -1,46 +1,88 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthDto } from './dto';
-import { Response } from 'express';
+import { LoginDto, RegisterDto } from './dto';
+import { Request, Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private authService: AuthService) {}
+    constructor(private authService: AuthService) { }
 
     @Post('login')
-    login() {
-        this.authService.login()
-    }
-
-    @Post('register')
-    async register(@Body() dto: AuthDto, @Res() res: Response) {
-        const { user, accessToken, refreshToken } = await this.authService.register(dto);
-
-        const { password, ...userWithoutPassword } = user;
+    @HttpCode(HttpStatus.OK)
+    async login(@Body() dto: LoginDto,
+        @Headers('user-agent') userAgent: string,
+        @Res() res: Response) {
+        const { user, accessToken, refreshToken } = await this.authService.login(dto, userAgent);
 
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             maxAge: 15 * 60 * 1000, // 15 minutes
-            secure: process.env.NODE_ENV === 'production', 
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            secure: process.env.NODE_ENV === 'production', 
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
         });
 
-        return res.json({ user: userWithoutPassword });
+        return res.json({ user });
     }
 
+    @Post('register')
+    @HttpCode(HttpStatus.CREATED)
+    async register(@Body() dto: RegisterDto,
+        @Headers('user-agent') userAgent: string,
+        @Res() res: Response) {
+        const { user, accessToken, refreshToken } = await this.authService.register(dto, userAgent);
+
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            maxAge: 15 * 60 * 1000, // 15 minutes
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+        });
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+        });
+
+        return res.json({ user });
+    }
+
+    @UseGuards(AuthGuard('access'))
     @Post('logout')
-    logout() {
-        this.authService.logout()
+    @HttpCode(HttpStatus.OK)
+    async logout(@Req() req: Request, @Res() res: Response) {
+
+        const sessionId = (req.user as any).sessionId;
+        await this.authService.logout(sessionId);
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+
+        return res.json({ message: 'Logged out successfully' })
     }
 
+    @UseGuards(AuthGuard('refresh'))
     @Post('refresh')
-    refreshToken() {
-        this.authService.refreshToken()
+    @HttpCode(HttpStatus.OK)
+    async refreshToken(@Req() req: Request, @Res() res: Response) {
+
+        const session = req.user as { sessionId: number, userId: number, expiresAt: Date };
+
+        const { accessToken } = await this.authService.refreshToken(session);
+
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            maxAge: 15 * 60 * 1000, // 15 minutes
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+        });
+
+        return res.json({ message: 'Access token refreshed' });
     }
 }

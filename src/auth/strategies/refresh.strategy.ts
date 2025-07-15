@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { PrismaService } from "src/prisma/prisma.service";
@@ -19,6 +19,12 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
     }
 
     async validate(payload: any) {
-        return payload;
+        const session = await this.prisma.session.findUnique({
+            where: { sessionId: payload.sessionId }
+        });
+        if (!session) {
+            throw new UnauthorizedException('Session not found');
+        }
+        return session;
     }
 }

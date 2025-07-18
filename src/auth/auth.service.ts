@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 
 
 @Injectable()
@@ -34,7 +35,7 @@ export class AuthService {
             throw new InternalServerErrorException('Session creation failed, try to login');
 
         const refreshToken = this.getRefreshToken(userSession.sessionId);
-        const accessToken = this.getAccessToken(user.userId, userSession.sessionId);
+        const accessToken = this.getAccessToken(user.userId, userSession.sessionId, user.role);
 
         return { user, accessToken, refreshToken };
     }
@@ -59,9 +60,10 @@ export class AuthService {
         const newUser = await this.prisma.user.create({
             data: {
                 email: dto.email,
-                firstName: dto.firstname,
+                firstName: dto.firstName,
                 lastName: dto.lastName,
-                password: hash
+                password: hash,
+                role: dto.role || 'USER'
             }
         });
 
@@ -82,15 +84,15 @@ export class AuthService {
         }
 
         const refreshToken = this.getRefreshToken(userSession.sessionId);
-        const accessToken = this.getAccessToken(newUser.userId, userSession.sessionId)
+        const accessToken = this.getAccessToken(newUser.userId, userSession.sessionId, newUser.role)
 
         const { password, ...userWithoutPassword } = newUser;
 
         return { user: userWithoutPassword, accessToken, refreshToken };
     }
 
-    getAccessToken(userId: number, sessionId: number) {
-        const payload = { userId, sessionId };
+    getAccessToken(userId: number, sessionId: number, role: Role) {
+        const payload = { userId, sessionId, role };
 
         const accessToken = this.jwtService.sign(payload, {
             secret: process.env.ACCESS_TOKEN_SECRET,
@@ -127,16 +129,35 @@ export class AuthService {
         return { message: 'Logged out successfully' };
     }
 
-    async refreshToken(session: { sessionId: number, userId: number, expiresAt: Date }) {
-        if (!session) {
+    async refreshToken(session: { sessionId: number }) {
+        if (!session || !session.sessionId) {
             throw new UnauthorizedException('Session not found');
         }
 
-        if (session.expiresAt.getTime() < Date.now()) {
+        const dbSession = await this.prisma.session.findUnique({
+            where: { sessionId: session.sessionId },
+            select: { sessionId: true, userId: true, expiresAt: true }
+        });
+
+        if (!dbSession) {
+            throw new UnauthorizedException('Session not found');
+        }
+
+        if (dbSession.expiresAt.getTime() < Date.now()) {
             throw new UnauthorizedException('Session expired');
         }
 
-        const accessToken = this.getAccessToken(session.userId, session.sessionId);
+        // Recupera il ruolo dell'utente
+        const user = await this.prisma.user.findUnique({
+            where: { userId: dbSession.userId },
+            select: { role: true }
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const accessToken = this.getAccessToken(dbSession.userId, dbSession.sessionId, user.role);
 
         return { accessToken };
     }

@@ -19,12 +19,6 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
     }
 
     async validate(payload: any) {
-        const session = await this.prisma.session.findUnique({
-            where: { sessionId: payload.sessionId }
-        });
-        if (!session) {
-            throw new UnauthorizedException('Session not found');
-        }
-        return session;
+        return payload;
     }
 }

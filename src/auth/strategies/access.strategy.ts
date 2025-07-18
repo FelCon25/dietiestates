@@ -19,12 +19,6 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
     }
 
     async validate(payload: any) {
-        const user = await this.prisma.user.findUnique({
-            where: { userId: payload.userId }
-        });
-        if (!user) {
-            throw new UnauthorizedException('User not found');
-        }
-        return { ...user, sessionId: payload.sessionId };
+        return payload;
     }
 }

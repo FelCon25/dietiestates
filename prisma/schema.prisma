@@ -34,7 +34,7 @@ model User {
   updatedAt  DateTime  @updatedAt
 
   sessions   Session[]
-  admin      Admin?   
+  agencyAdmin AgencyAdmin? 
 
   @@map("users")
 }
@@ -50,9 +50,32 @@ model Session {
   @@map("sessions")
 }
 
-model Admin {
-  userId   Int   @id
-  user     User  @relation(fields: [userId], references: [userId])
+model AgencyAdmin {
+  userId Int   @id
+  user   User  @relation(fields: [userId], references: [userId])
+  agency Agency?
 
-  @@map("admins")
+  @@map("agency_admins")
+}
+
+model Agency {
+  agencyId     Int      @id @default(autoincrement())
+  agencyAdminId      Int      @unique 
+  agencyAdmin        AgencyAdmin    @relation(fields: [agencyAdminId], references: [userId])
+  businessName String   // trade name
+  legalName    String   // legal name
+  vatNumber    String   // VAT number
+  email        String   @unique
+  pec          String?
+  phone        String?
+  website      String?
+  address      String
+  city         String
+  postalCode   String   // cap
+  province     String
+  country      String
+  latitude     Decimal?
+  longitude    Decimal?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

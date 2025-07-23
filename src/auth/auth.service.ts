@@ -67,6 +67,14 @@ export class AuthService {
             }
         });
 
+        if (dto.role === 'ADMIN_AGENCY') {
+            await this.prisma.agencyAdmin.create({
+                data: {
+                    userId: newUser.userId
+                }
+            });
+        }
+
         if (!newUser) {
             throw new InternalServerErrorException('User registration failed');
         }

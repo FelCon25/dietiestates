@@ -155,7 +155,6 @@ export class AuthService {
             throw new UnauthorizedException('Session expired');
         }
 
-        // Recupera il ruolo dell'utente
         const user = await this.prisma.user.findUnique({
             where: { userId: dbSession.userId },
             select: { role: true }

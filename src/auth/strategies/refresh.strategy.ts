@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { PrismaService } from "src/prisma/prisma.service";
+import { RefreshUser } from "src/types/auth-user.interface";
 
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
@@ -18,7 +19,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
         });
     }
 
-    async validate(payload: any) {
+    async validate(payload: RefreshUser): Promise<RefreshUser> {
         return payload;
     }
 }

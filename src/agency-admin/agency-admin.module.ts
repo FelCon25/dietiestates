@@ -4,6 +4,6 @@ import { AgencyAdminService } from './agency-admin.service';
 
 @Module({
   controllers: [AgencyAdminController],
-  providers: [AgencyAdminService]
+  providers: [AgencyAdminService],
 })
 export class AgencyAdminModule {}

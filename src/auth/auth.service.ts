@@ -170,4 +170,28 @@ export class AuthService {
         return { accessToken };
     }
 
+    async sendPasswordResetEmail(email: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!user) {
+            throw new BadRequestException('User with this email does not exist');
+        }
+
+        const code = Math.random().toString(36).substring(2, 10); 
+        const expiresAt = new Date(Date.now() + 900000); // 15 minutes from now
+
+        await this.prisma.verificationCode.create({
+            data: {
+                code,
+                userId: user.userId,
+                type: 'PASSWORD_RESET',
+                expiresAt
+            }
+        });
+
+        return { message: 'Password reset email sent' };
+    }
+
 }

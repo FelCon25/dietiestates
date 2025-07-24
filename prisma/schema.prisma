@@ -35,6 +35,8 @@ model User {
 
   sessions   Session[]
   agencyAdmin AgencyAdmin? 
+  assistant   Assistant? 
+  verificationCodes VerificationCode[]
 
   @@map("users")
 }
@@ -78,4 +80,26 @@ model Agency {
   longitude    Decimal?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  assistants Assistant[] 
+}
+
+model Assistant {
+  userId     Int    @id
+  user       User   @relation(fields: [userId], references: [userId])
+  agencyId   Int
+  agency     Agency @relation(fields: [agencyId], references: [agencyId])
+
+  @@map("assistants")
+}
+
+model VerificationCode {
+  code       String   @id 
+  userId     Int
+  user       User     @relation(fields: [userId], references: [userId])
+  type       String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@map("verification_codes")
 }

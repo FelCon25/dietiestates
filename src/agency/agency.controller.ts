@@ -5,6 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/guards/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Request } from 'express';
+import { AuthUser } from 'src/types/auth-user.interface';
 
 @Controller('agency')
 @UseGuards(AuthGuard('access'), RolesGuard)
@@ -14,7 +15,7 @@ export class AgencyController {
     @Post()
     @Roles('ADMIN_AGENCY')
     async create(@Req() req: Request, @Body() dto: CreateAgencyDto) {
-        const userId = (req.user as any).userId;
-        return this.agencyService.create(userId, dto);
+        const user = req.user as AuthUser
+        return this.agencyService.create(user.userId, dto);
     }
 }

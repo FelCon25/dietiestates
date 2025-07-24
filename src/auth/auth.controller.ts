@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { RefreshUser } from 'src/types/auth-user.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -59,12 +60,19 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async logout(@Req() req: Request, @Res() res: Response) {
 
-        const sessionId = (req.user as any).sessionId;
-        await this.authService.logout(sessionId);
+        const user = req.user as RefreshUser;
+        await this.authService.logout(user.sessionId);
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
 
         return res.json({ message: 'Logged out successfully' })
+    }
+
+    @Post('password-reset')
+    @HttpCode(HttpStatus.OK)
+    async passwordReset(@Body('email') email: string) {
+        await this.authService.sendPasswordResetEmail(email);
+        return { message: 'Password reset email sent' };
     }
 
     @UseGuards(AuthGuard('refresh'))

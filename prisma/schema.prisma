@@ -94,7 +94,7 @@ model Assistant {
 }
 
 model VerificationCode {
-  code       String   @id 
+  code       String   @id @default(uuid())
   userId     Int
   user       User     @relation(fields: [userId], references: [userId])
   type       String

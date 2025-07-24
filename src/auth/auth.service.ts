@@ -1,9 +1,12 @@
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
+import { sendMail } from 'src/utils/sendMail';
+import { VerificationType } from 'src/types/verification-type';
+import { getPasswordResetTemplate } from 'src/utils/mail-templates/password-reset.html';
 
 
 @Injectable()
@@ -169,28 +172,105 @@ export class AuthService {
         return { accessToken };
     }
 
-    async sendPasswordResetEmail(email: string) {
+    async sendPasswordReset(email: string) {
         const user = await this.prisma.user.findUnique({
             where: { email }
         });
 
         if (!user) {
-            throw new BadRequestException('User with this email does not exist');
+            throw new NotFoundException('User with this email does not exist');
         }
 
-        const code = Math.random().toString(36).substring(2, 10); 
+        // Check for too many requests in the last 5 minutes
+        // Limit to 3 requests per user in 5 minutes
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+        const recentRequests = await this.prisma.verificationCode.count({
+            where: {
+                userId: user.userId,
+                type: VerificationType.PASSWORD_RESET,
+                createdAt: { gte: fiveMinutesAgo }
+            }
+        });
+
+        if (recentRequests >= 3) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.TOO_MANY_REQUESTS,
+                    error: 'Too Many Requests',
+                    message: 'You have requested too many password resets. Please wait a few minutes before trying again.'
+                },
+                HttpStatus.TOO_MANY_REQUESTS
+            );
+        }
+
         const expiresAt = new Date(Date.now() + 900000); // 15 minutes from now
 
-        await this.prisma.verificationCode.create({
+        const verification = await this.prisma.verificationCode.create({
             data: {
-                code,
                 userId: user.userId,
-                type: 'PASSWORD_RESET',
+                type: VerificationType.PASSWORD_RESET,
                 expiresAt
             }
         });
 
-        return { message: 'Password reset email sent' };
+        const url = `${process.env.APP_ORIGIN}/password/reset?code=${verification.code}&exp=${expiresAt.getTime()}`;
+        const { success, error } = await sendMail({
+            to: user.email,
+            ...getPasswordResetTemplate(url),
+        });
+
+        if (!success) {
+            throw new InternalServerErrorException(`${error?.name} - ${error?.message}`);
+        }
     }
 
+    async passwordReset(code: string, newPassword: string) {
+        const verification = await this.prisma.verificationCode.findFirst({
+            where: {
+                code,
+                type: VerificationType.PASSWORD_RESET,
+                expiresAt: { gt: new Date() }
+            }
+        });
+
+        if (!verification) {
+            throw new NotFoundException('Invalid or expired verification code');
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { userId: verification.userId }
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const hashedPassword = await this.hashData(newPassword);
+        await this.prisma.user.update({
+            where: { userId: user.userId },
+            data: { password: hashedPassword }
+        });
+
+        await this.prisma.session.deleteMany({
+            where: { userId: user.userId }
+        });
+
+        await this.prisma.verificationCode.delete({
+            where: { code: verification.code }
+        });
+    }
+
+    async getSessions(userId: number) {
+        return this.prisma.session.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async updateProfilePic(userId: number, profilePic: string) {
+        return this.prisma.user.update({
+            where: { userId },
+            data: { profilePic }
+        });
+    }
 }

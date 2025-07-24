@@ -1,9 +1,14 @@
-import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-import { RefreshUser } from 'src/types/auth-user.interface';
+import { AuthUser, RefreshUser } from 'src/types/auth-user.interface';
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { diskStorage } from 'multer';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as path from 'path';
+import { log } from 'console';
 
 @Controller('auth')
 export class AuthController {
@@ -68,11 +73,43 @@ export class AuthController {
         return res.json({ message: 'Logged out successfully' })
     }
 
-    @Post('password-reset')
+    @Post('password/forgot')
     @HttpCode(HttpStatus.OK)
-    async passwordReset(@Body('email') email: string) {
-        await this.authService.sendPasswordResetEmail(email);
+    async sendPasswordReset(@Body('email') email: string) {
+        await this.authService.sendPasswordReset(email);
         return { message: 'Password reset email sent' };
+    }
+
+    @Post('password/reset')
+    @HttpCode(HttpStatus.OK)
+    async passwordReset(@Query('code') code: string, @Body('newPassword') newPassword: string) {
+        await this.authService.passwordReset(code, newPassword);
+        return { message: 'Password reset successfully' };
+    }
+
+
+    @Post('upload-profile-pic')
+    @UseGuards(AuthGuard('access'))
+    @UseInterceptors(FileInterceptor('file', {
+        storage: diskStorage({
+            destination: './uploads/profile-pics',
+            filename: (req, file, cb) => {
+                const ext = path.extname(file.originalname);
+
+                const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+                cb(null, filename);
+            }
+        })
+    }))
+    async uploadProfilePic(
+        @UploadedFile() file: Express.Multer.File,
+        @Req() req: Request
+    ) {
+        const user = req.user as AuthUser;
+        const profilePicPath = `/uploads/profile-pics/${file.filename}`;
+        await this.authService.updateProfilePic(user.userId, profilePicPath);
+        return { profilePic: profilePicPath };
     }
 
     @UseGuards(AuthGuard('refresh'))
@@ -93,4 +130,14 @@ export class AuthController {
 
         return res.json({ message: 'Access token refreshed' });
     }
+
+    @UseGuards(AuthGuard('access'))
+    @Get('sessions')
+    async getSessions(@Req() req: Request) {
+        const user = req.user as AuthUser;
+
+        const sessions = await this.authService.getSessions(user.userId);
+        return { sessions };
+    }
+
 }

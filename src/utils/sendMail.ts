@@ -24,7 +24,7 @@ export const sendMail = async (params: Params) => {
 
   try {
     const response = await resend.emails.send({
-      from: getFromEmail() || "no-reply@yourdomain.com",
+      from: getFromEmail() || "",
       to: getToEmail(to),
       subject,
       text,

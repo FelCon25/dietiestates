@@ -6,6 +6,7 @@ import { Roles } from '../auth/guards/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Request } from 'express';
 import { AuthUser } from 'src/types/auth-user.interface';
+import { Role } from 'src/types/role.enum';
 
 @Controller('agency')
 @UseGuards(AuthGuard('access'), RolesGuard)
@@ -13,7 +14,7 @@ export class AgencyController {
     constructor(private readonly agencyService: AgencyService) { }
 
     @Post()
-    @Roles('ADMIN_AGENCY')
+    @Roles(Role.ADMIN)
     async create(@Req() req: Request, @Body() dto: CreateAgencyDto) {
         const user = req.user as AuthUser
         return this.agencyService.create(user.userId, dto);

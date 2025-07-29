@@ -19,6 +19,12 @@ enum Role {
   ASSISTANT
   AGENT
 }
+enum PropertyType {
+  SALE
+  RENT
+  SHORT_TERM // Short-term rentals
+  VACATION // Vacation rentals
+}
 
 model User {
   userId     Int       @id @default(autoincrement())
@@ -33,9 +39,10 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  sessions   Session[]
-  agencyAdmin AgencyAdmin? 
-  assistant   Assistant? 
+  sessions          Session[]
+  agencyAdmin       AgencyAdmin?
+  assistant         Assistant?
+  agent             Agent?
   verificationCodes VerificationCode[]
 
   @@map("users")
@@ -82,6 +89,8 @@ model Agency {
   updatedAt    DateTime @updatedAt
 
   assistants Assistant[] 
+  agents     Agent[]
+  properties Property[]
 }
 
 model Assistant {
@@ -93,6 +102,17 @@ model Assistant {
   @@map("assistants")
 }
 
+model Agent {
+  userId     Int    @id
+  user       User   @relation(fields: [userId], references: [userId])
+  agencyId   Int
+  agency     Agency @relation(fields: [agencyId], references: [agencyId])
+
+  properties Property[]
+
+  @@map("agents")
+}
+
 model VerificationCode {
   code       String   @id @default(uuid())
   userId     Int
@@ -102,4 +122,43 @@ model VerificationCode {
   expiresAt  DateTime
 
   @@map("verification_codes")
+}
+
+model Property {
+  propertyId   Int      @id @default(autoincrement())
+  agencyId     Int
+  agency       Agency   @relation(fields: [agencyId], references: [agencyId])
+  agentId      Int
+  agent        Agent    @relation(fields: [agentId], references: [userId])
+  title        String   
+  description  String
+  price        Decimal
+  surfaceArea  Int
+  rooms        Int
+  floors       Int
+  elevator     Boolean
+  energyClass  String
+  concierge    Boolean
+  airConditioning Boolean
+  type         PropertyType
+  address      String
+  city         String
+  postalCode   String
+  province     String
+  country      String
+  latitude     Decimal
+  longitude    Decimal
+  images      PropertyImage[]
+  @@map("properties")
+}
+
+model PropertyImage {
+  imageId     Int      @id @default(autoincrement())
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [propertyId])
+  url         String
+  order       Int      
+  createdAt   DateTime @default(now())
+
+  @@map("property_images")
 }

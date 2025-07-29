@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get, Delete, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 import { Request, Response } from 'express';
@@ -135,9 +135,21 @@ export class AuthController {
     @Get('sessions')
     async getSessions(@Req() req: Request) {
         const user = req.user as AuthUser;
-
         const sessions = await this.authService.getSessions(user.userId);
-        return { sessions };
+        return {
+            sessions,
+            currentSessionId: user.sessionId
+        };
     }
 
+    @UseGuards(AuthGuard('access'))
+    @Delete('sessions/:sessionId')
+    async deleteSession(@Param('sessionId') sessionId: string, @Req() req: Request) {
+        const user = req.user as AuthUser;
+        const sessionIdNum = Number(sessionId);
+
+        await this.authService.deleteSession(sessionIdNum, user);
+        return { message: 'Session deleted successfully' };
+
+    }
 }

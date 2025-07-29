@@ -7,10 +7,12 @@ import { Role } from '@prisma/client';
 import { sendMail } from 'src/utils/sendMail';
 import { VerificationType } from 'src/types/verification-type';
 import { getPasswordResetTemplate } from 'src/utils/mail-templates/password-reset.html';
+import { AuthUser } from 'src/types/auth-user.interface';
 
 
 @Injectable()
 export class AuthService {
+
     constructor(private prisma: PrismaService, private jwtService: JwtService) { }
 
     async login(dto: LoginDto, userAgent: string) {
@@ -66,11 +68,11 @@ export class AuthService {
                 firstName: dto.firstName,
                 lastName: dto.lastName,
                 password: hash,
-                role: dto.role || 'USER'
+                role: dto.role || Role.USER
             }
         });
 
-        if (dto.role === 'ADMIN_AGENCY') {
+        if (dto.role === Role.ADMIN_AGENCY) {
             await this.prisma.agencyAdmin.create({
                 data: {
                     userId: newUser.userId
@@ -225,7 +227,11 @@ export class AuthService {
     }
 
     async passwordReset(code: string, newPassword: string) {
-        const verification = await this.prisma.verificationCode.findFirst({
+        if (!code) {
+            throw new BadRequestException('Verification code is required');
+        }
+
+        const verification = await this.prisma.verificationCode.findUnique({
             where: {
                 code,
                 type: VerificationType.PASSWORD_RESET,
@@ -264,6 +270,21 @@ export class AuthService {
         return this.prisma.session.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async deleteSession(sessionId: number, user: AuthUser) {
+        if (user.sessionId === sessionId) {
+            throw new BadRequestException('Cannot delete current session');
+        }
+        const session = await this.prisma.session.findUnique({
+            where: { sessionId }
+        });
+        if (!session) {
+            throw new NotFoundException('Session not found');
+        }
+        return await this.prisma.session.delete({
+            where: { sessionId }
         });
     }
 

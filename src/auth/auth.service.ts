@@ -281,7 +281,7 @@ export class AuthService {
             where: { sessionId }
         });
         if (!session) {
-            throw new NotFoundException('Session not found');
+            throw new UnauthorizedException('Session not found');
         }
         return await this.prisma.session.delete({
             where: { sessionId }

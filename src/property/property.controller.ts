@@ -5,8 +5,9 @@ import { Role } from "src/types/role.enum";
 import { Roles } from "src/auth/guards/roles.decorator";
 import { AuthUser } from "src/types/auth-user.interface";
 import { CreatePropertyDto } from "./dto/create-property.dto";
-import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "src/auth/guards/roles.guard";
+import { AccessTokenGuard } from "src/auth/guards/access-token.guard";
+import { SearchPropertyDto } from "./dto/search-property.dto";
 
 @Controller('property')
 export class PropertyController {
@@ -14,7 +15,7 @@ export class PropertyController {
 
     @Post()
     @Roles(Role.AGENT)
-    @UseGuards(AuthGuard('access'), RolesGuard)
+    @UseGuards(AccessTokenGuard, RolesGuard)
     async createProperty(@Req() req: Request, @Body() dto: CreatePropertyDto) {
         const user = req.user as AuthUser;
         return this.propertyService.createProperty(user.userId, dto);
@@ -34,5 +35,10 @@ export class PropertyController {
     async getPropertyById(@Param('id') id: string) {
         const propertyId = Number(id);
         return this.propertyService.getPropertyById(propertyId);
+    }
+
+    @Post('search')
+    async searchProperties(@Body() searchDto: SearchPropertyDto) {
+        return this.propertyService.searchProperties(searchDto);
     }
 }

@@ -1,15 +1,15 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AgencyService } from './agency.service';
 import { CreateAgencyDto } from './dto/create-agency.dto';
-import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/guards/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Request } from 'express';
 import { AuthUser } from 'src/types/auth-user.interface';
 import { Role } from 'src/types/role.enum';
+import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 
 @Controller('agency')
-@UseGuards(AuthGuard('access'), RolesGuard)
+@UseGuards(AccessTokenGuard, RolesGuard)
 export class AgencyController {
     constructor(private readonly agencyService: AgencyService) { }
 

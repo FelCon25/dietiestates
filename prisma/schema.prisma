@@ -19,6 +19,13 @@ enum Role {
   ASSISTANT
   AGENT
 }
+
+enum PropertyCondition {
+  NEW
+  GOOD_CONDITION
+  TO_RENOVATE
+}
+
 enum PropertyType {
   SALE
   RENT
@@ -39,6 +46,7 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
+  savedSearches SavedSearch[]
   sessions          Session[]
   agencyAdmin       AgencyAdmin?
   assistant         Assistant?
@@ -140,6 +148,7 @@ model Property {
   energyClass  String
   concierge    Boolean
   airConditioning Boolean
+  furnished Boolean?
   type         PropertyType
   address      String
   city         String
@@ -148,8 +157,51 @@ model Property {
   country      String
   latitude     Decimal
   longitude    Decimal
+  propertyCondition String?
   images      PropertyImage[]
   @@map("properties")
+}
+
+model SavedSearch {
+  searchId Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields: [userId], references: [userId])
+
+  name String
+
+  // address
+  address String?
+  city String?
+  province String?
+  country String?
+  postalCode String?
+
+  // location
+  latitude Decimal?
+  longitude Decimal?
+  radius Int?
+
+  minSurfaceArea Int?
+  maxSurfaceArea Int?
+
+  // rooms
+  minRooms Int?
+  maxRooms Int?
+
+  propertyCondition String?
+  elevator Boolean?
+  airConditioning Boolean?
+  concierge Boolean?
+  energyClass String?
+  furnished Boolean?
+
+  // property type
+  type PropertyType?
+
+  // price
+  minPrice Decimal?
+  maxPrice Decimal?
+
 }
 
 model PropertyImage {

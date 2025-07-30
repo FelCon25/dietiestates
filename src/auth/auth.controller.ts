@@ -8,7 +8,7 @@ import { UseInterceptors, UploadedFile } from '@nestjs/common';
 import { diskStorage } from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as path from 'path';
-import { log } from 'console';
+import { AccessTokenGuard } from './guards/access-token.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -60,7 +60,7 @@ export class AuthController {
         return res.json({ user });
     }
 
-    @UseGuards(AuthGuard('access'))
+    @UseGuards(AccessTokenGuard)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     async logout(@Req() req: Request, @Res() res: Response) {
@@ -89,7 +89,7 @@ export class AuthController {
 
 
     @Post('upload-profile-pic')
-    @UseGuards(AuthGuard('access'))
+    @UseGuards(AccessTokenGuard)
     @UseInterceptors(FileInterceptor('file', {
         storage: diskStorage({
             destination: './uploads/profile-pics',
@@ -131,7 +131,7 @@ export class AuthController {
         return res.json({ message: 'Access token refreshed' });
     }
 
-    @UseGuards(AuthGuard('access'))
+    @UseGuards(AccessTokenGuard)
     @Get('sessions')
     async getSessions(@Req() req: Request) {
         const user = req.user as AuthUser;
@@ -142,7 +142,7 @@ export class AuthController {
         };
     }
 
-    @UseGuards(AuthGuard('access'))
+    @UseGuards(AccessTokenGuard)
     @Delete('sessions/:sessionId')
     async deleteSession(@Param('sessionId') sessionId: string, @Req() req: Request) {
         const user = req.user as AuthUser;

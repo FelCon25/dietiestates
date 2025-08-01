@@ -48,6 +48,10 @@ export class CreatePropertyDto {
     @IsBoolean()
     airConditioning: boolean;
 
+    @IsOptional()
+    @IsBoolean()
+    furnished?: boolean;
+
     @IsNotEmpty()
     @IsEnum(PropertyType)
     type: PropertyType;
@@ -79,4 +83,8 @@ export class CreatePropertyDto {
     @IsNotEmpty()
     @IsNumber()
     longitude: number;
+
+    @IsOptional()
+    @IsString()
+    propertyCondition?: string;
 }

@@ -100,120 +100,155 @@ export class PropertyService {
         return property;
     }
 
-    async searchProperties(searchDto: SearchPropertyDto) {
+    async searchProperties(dto: SearchPropertyDto) {
         const {
             page = 1,
             pageSize = 10,
             sortBy = 'createdAt',
             sortOrder = 'desc',
-            ...filters
-        } = searchDto;
+            address,
+            city,
+            province,
+            country,
+            postalCode,
+            minPrice,
+            maxPrice,
+            minSurfaceArea,
+            maxSurfaceArea,
+            minRooms,
+            maxRooms,
+            type,
+            propertyCondition,
+            elevator,
+            airConditioning,
+            concierge,
+            furnished,
+            energyClass,
+            agencyId,
+            agentId,
+            searchText,
+        } = dto;
 
         const skip = (page - 1) * pageSize;
 
-        // Build filters for the query
         const where: Prisma.PropertyWhereInput = {};
 
-        // Location filters
-        if (filters.address) {
-            where.address = { contains: filters.address, mode: 'insensitive' };
+        if (address) {
+            where.address = { contains: address, mode: 'insensitive' };
         }
-        if (filters.city) {
-            where.city = { contains: filters.city, mode: 'insensitive' };
+        if (city) {
+            where.city = { contains: city, mode: 'insensitive' };
         }
-        if (filters.province) {
-            where.province = { contains: filters.province, mode: 'insensitive' };
+        if (province) {
+            where.province = { contains: province, mode: 'insensitive' };
         }
-        if (filters.country) {
-            where.country = { contains: filters.country, mode: 'insensitive' };
+        if (country) {
+            where.country = { contains: country, mode: 'insensitive' };
         }
-        if (filters.postalCode) {
-            where.postalCode = { contains: filters.postalCode, mode: 'insensitive' };
+        if (postalCode) {
+            where.postalCode = { contains: postalCode, mode: 'insensitive' };
         }
 
-        // Filtri per il prezzo
-        if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+        if (minPrice !== undefined || maxPrice !== undefined) {
             where.price = {};
-            if (filters.minPrice !== undefined) {
-                where.price.gte = filters.minPrice;
+            if (minPrice !== undefined) {
+                where.price.gte = new Prisma.Decimal(minPrice);
             }
-            if (filters.maxPrice !== undefined) {
-                where.price.lte = filters.maxPrice;
+            if (maxPrice !== undefined) {
+                where.price.lte = new Prisma.Decimal(maxPrice);
             }
         }
 
-        // Surface area filters
-        if (filters.minSurfaceArea !== undefined || filters.maxSurfaceArea !== undefined) {
+        if (minSurfaceArea !== undefined || maxSurfaceArea !== undefined) {
             where.surfaceArea = {};
-            if (filters.minSurfaceArea !== undefined) where.surfaceArea.gte = filters.minSurfaceArea;
-            if (filters.maxSurfaceArea !== undefined) where.surfaceArea.lte = filters.maxSurfaceArea;
+            if (minSurfaceArea !== undefined) {
+                where.surfaceArea.gte = minSurfaceArea;
+            }
+            if (maxSurfaceArea !== undefined) {
+                where.surfaceArea.lte = maxSurfaceArea;
+            }
         }
 
-        // Room number filters
-        if (filters.minRooms !== undefined || filters.maxRooms !== undefined) {
+        // Filtri di stanze
+        if (minRooms !== undefined || maxRooms !== undefined) {
             where.rooms = {};
-            if (filters.minRooms !== undefined) where.rooms.gte = filters.minRooms;
-            if (filters.maxRooms !== undefined) where.rooms.lte = filters.maxRooms;
+            if (minRooms !== undefined) {
+                where.rooms.gte = minRooms;
+            }
+            if (maxRooms !== undefined) {
+                where.rooms.lte = maxRooms;
+            }
         }
 
-        // Feature filters
-        if (filters.elevator !== undefined) {
-            where.elevator = filters.elevator;
+        if (type) {
+            where.type = type;
         }
-        if (filters.airConditioning !== undefined) {
-            where.airConditioning = filters.airConditioning;
+        if (propertyCondition) {
+            where.propertyCondition = propertyCondition;
         }
-        if (filters.concierge !== undefined) {
-            where.concierge = filters.concierge;
+        if (elevator !== undefined) {
+            where.elevator = elevator;
         }
-        if (filters.energyClass) {
-            where.energyClass = { contains: filters.energyClass, mode: 'insensitive' };
+        if (airConditioning !== undefined) {
+            where.airConditioning = airConditioning;
         }
-        if (filters.furnished !== undefined) {
-            where.furnished = filters.furnished;
+        if (concierge !== undefined) {
+            where.concierge = concierge;
         }
-
-        // Property type filter
-        if (filters.type) {
-            where.type = filters.type;
+        if (furnished !== undefined) {
+            where.furnished = furnished;
         }
-
-        // Property condition filter
-        if (filters.propertyCondition) {
-            where.propertyCondition = { contains: filters.propertyCondition, mode: 'insensitive' };
+        if (energyClass) {
+            where.energyClass = energyClass;
         }
 
-        // Geographic radius filter (if provided)
-        if (filters.latitude && filters.longitude && filters.radius) {
-            // Approximate radius calculation in degrees (1 degree ≈ 111 km)
-            const radiusInDegrees = filters.radius / 111;
-            where.AND = [
-                { latitude: { gte: filters.latitude - radiusInDegrees } },
-                { latitude: { lte: filters.latitude + radiusInDegrees } },
-                { longitude: { gte: filters.longitude - radiusInDegrees } },
-                { longitude: { lte: filters.longitude + radiusInDegrees } }
+        if (agencyId) {
+            where.agencyId = agencyId;
+        }
+        if (agentId) {
+            where.agentId = agentId;
+        }
+
+        if (searchText) {
+            where.OR = [
+                { title: { contains: searchText, mode: 'insensitive' } },
+                { description: { contains: searchText, mode: 'insensitive' } },
             ];
         }
 
-        // Sort field validation
-        const validSortFields = [
-            'createdAt', 'price', 'surfaceArea', 'rooms', 'floors',
-            'title', 'city', 'province', 'country'
-        ];
-        const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+        const orderBy: Prisma.PropertyOrderByWithRelationInput = {};
+        if (sortBy === 'price') {
+            orderBy.price = sortOrder;
+        } else if (sortBy === 'surfaceArea') {
+            orderBy.surfaceArea = sortOrder;
+        } else {
+            orderBy.createdAt = sortOrder;
+        }
 
         const [items, total] = await Promise.all([
             this.prisma.property.findMany({
                 where,
                 skip,
                 take: pageSize,
-                orderBy: { [sortField]: sortOrder },
+                orderBy,
                 include: {
                     images: {
                         where: { order: 0 },
                         take: 1,
                     },
                     agency: true,
+                    agent: {
+                        include: {
+                            user: {
+                                select: {
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                    phone: true,
+                                },
+                            },
+                        },
+                    },
                 },
             }),
             this.prisma.property.count({ where }),
@@ -234,7 +269,6 @@ export class PropertyService {
             page,
             pageSize,
             totalPages: Math.ceil(total / pageSize),
-            filters: searchDto,
         };
     }
 }

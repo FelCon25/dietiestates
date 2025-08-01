@@ -1,114 +1,138 @@
-import { IsOptional, IsString, IsNumber, IsBoolean, IsEnum, IsDecimal } from "class-validator";
-import { PropertyType } from "@prisma/client";
+import { IsOptional, IsString, IsNumber, IsEnum, IsBoolean, Min, Max, IsDecimal } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { PropertyType, PropertyCondition } from '@prisma/client';
 
 export class SearchPropertyDto {
-    // ===== LOCATION =====
-    @IsOptional()
-    @IsString()
-    address?: string;        // Generic address (e.g. "Via del Corso")
+  // Pagination
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  page?: number = 1;
 
-    @IsOptional()
-    @IsString()
-    city?: string;           // City (e.g. "Rome")
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(100)
+  pageSize?: number = 10;
 
-    @IsOptional()
-    @IsString()
-    province?: string;       // Province (e.g. "RM")
+  // Sorting
+  @IsOptional()
+  @IsString()
+  sortBy?: 'price' | 'createdAt' | 'surfaceArea' | 'rooms' = 'createdAt';
 
-    @IsOptional()
-    @IsString()
-    country?: string;        // Country (e.g. "Italy")
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'asc' | 'desc' = 'desc';
 
-    @IsOptional()
-    @IsString()
-    postalCode?: string;     // Postal code (e.g. "00100")
+  // Geographic filters
+  @IsOptional()
+  @IsString()
+  address?: string;
 
-    // ===== GEOGRAPHIC AREA =====
-    @IsOptional()
-    @IsNumber()
-    latitude?: number;       // Center latitude
+  @IsOptional()
+  @IsString()
+  city?: string;
 
-    @IsOptional()
-    @IsNumber()
-    longitude?: number;      // Center longitude
+  @IsOptional()
+  @IsString()
+  province?: string;
 
-    @IsOptional()
-    @IsNumber()
-    radius?: number;         // Radius in km
+  @IsOptional()
+  @IsString()
+  country?: string;
 
-    // ===== PRICE =====
-    @IsOptional()
-    @IsNumber()
-    minPrice?: number;       // Minimum price
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
 
-    @IsOptional()
-    @IsNumber()
-    maxPrice?: number;       // Maximum price
+  // Search by coordinates and radius
+  @IsOptional()
+  @Type(() => Number)
+  latitude?: number;
 
-    // ===== SURFACE AREA =====
-    @IsOptional()
-    @IsNumber()
-    minSurfaceArea?: number; // Minimum surface area in m²
+  @IsOptional()
+  @Type(() => Number)
+  longitude?: number;
 
-    @IsOptional()
-    @IsNumber()
-    maxSurfaceArea?: number; // Maximum surface area in m²
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  @Max(100)
+  radius?: number; // in km
 
-    // ===== ROOMS =====
-    @IsOptional()
-    @IsNumber()
-    minRooms?: number;       // Minimum number of rooms
+  // Price filters
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minPrice?: number;
 
-    @IsOptional()
-    @IsNumber()
-    maxRooms?: number;       // Maximum number of rooms
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxPrice?: number;
 
-    // ===== FEATURES =====
-    @IsOptional()
-    @IsBoolean()
-    elevator?: boolean;      // Elevator present
+  // Surface area filters
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minSurfaceArea?: number;
 
-    @IsOptional()
-    @IsBoolean()
-    airConditioning?: boolean; // Air conditioning present
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxSurfaceArea?: number;
 
-    @IsOptional()
-    @IsBoolean()
-    concierge?: boolean;     // Concierge present
+  // Room filters
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minRooms?: number;
 
-    @IsOptional()
-    @IsString()
-    energyClass?: string;    // Energy class (A, B, C, etc.)
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxRooms?: number;
 
-    @IsOptional()
-    @IsBoolean()
-    furnished?: boolean;     // Furnished property
+  // Property filters
+  @IsOptional()
+  @IsEnum(PropertyType)
+  type?: PropertyType;
 
-    // ===== PROPERTY TYPE =====
-    @IsOptional()
-    @IsEnum(PropertyType)
-    type?: PropertyType;     // Type: SALE, RENT, SHORT_TERM, VACATION
+  @IsOptional()
+  @IsString()
+  propertyCondition?: PropertyCondition;
 
-    // ===== CONDITIONS =====
-    @IsOptional()
-    @IsString()
-    propertyCondition?: string; // Condition: "new", "good", "to_renovate"
+  @IsOptional()
+  @IsBoolean()
+  elevator?: boolean;
 
-    // ===== PAGINATION =====
-    @IsOptional()
-    @IsNumber()
-    page?: number = 1;       // Current page (default: 1)
+  @IsOptional()
+  @IsBoolean()
+  airConditioning?: boolean;
 
-    @IsOptional()
-    @IsNumber()
-    pageSize?: number = 10;  // Items per page (default: 10)
+  @IsOptional()
+  @IsBoolean()
+  concierge?: boolean;
 
-    // ===== SORTING =====
-    @IsOptional()
-    @IsString()
-    sortBy?: string = 'createdAt'; // Sorting field
+  @IsOptional()
+  @IsBoolean()
+  furnished?: boolean;
 
-    @IsOptional()
-    @IsString()
-    sortOrder?: 'asc' | 'desc' = 'desc'; // Order: ascending or descending
+  @IsOptional()
+  @IsString()
+  energyClass?: string;
+
+  // Agency/agent filters
+  @IsOptional()
+  @Type(() => Number)
+  agencyId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  agentId?: number;
+
+  // Text search
+  @IsOptional()
+  @IsString()
+  searchText?: string; // searches in title and description
 }

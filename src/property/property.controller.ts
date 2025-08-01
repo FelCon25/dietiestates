@@ -37,8 +37,19 @@ export class PropertyController {
         return this.propertyService.getPropertyById(propertyId);
     }
 
-    @Post('search')
-    async searchProperties(@Body() searchDto: SearchPropertyDto) {
+    @Get('search')
+    async searchProperties(
+        @Query() searchDto: SearchPropertyDto = {},
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('sortBy') sortBy?: string,
+        @Query('sortOrder') sortOrder?: 'asc' | 'desc'
+    ) {
+        if (page) searchDto.page = Number(page);
+        if (pageSize) searchDto.pageSize = Number(pageSize);
+        if (sortBy) searchDto.sortBy = sortBy as any;
+        if (sortOrder) searchDto.sortOrder = sortOrder;
+        
         return this.propertyService.searchProperties(searchDto);
     }
 }

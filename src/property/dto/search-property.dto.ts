@@ -1,4 +1,13 @@
-import { IsOptional, IsString, IsNumber, IsEnum, IsBoolean, Min, Max, IsDecimal } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsBoolean,
+  Min,
+  Max,
+  IsDecimal,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { PropertyType, PropertyCondition } from '@prisma/client';
 
@@ -12,13 +21,12 @@ export class SearchPropertyDto {
   @IsOptional()
   @Type(() => Number)
   @Min(1)
-  @Max(100)
   pageSize?: number = 10;
 
   // Sorting
   @IsOptional()
   @IsString()
-  sortBy?: 'price' | 'createdAt' | 'surfaceArea' | 'rooms' = 'createdAt';
+  sortBy?: 'price' | 'createdAt' = 'createdAt';
 
   @IsOptional()
   @IsString()

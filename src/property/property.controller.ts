@@ -21,7 +21,7 @@ import { SearchPropertyDto } from './dto/search-property.dto';
 
 @Controller('property')
 export class PropertyController {
-  constructor(private readonly propertyService: PropertyService) {}
+  constructor(private readonly propertyService: PropertyService) { }
 
   @Post()
   @Roles(Role.AGENT)

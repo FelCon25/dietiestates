@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PropertyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createProperty(agentUserId: number, dto: CreatePropertyDto) {
     const agent = await this.prisma.agent.findUnique({
@@ -106,11 +106,81 @@ export class PropertyService {
     const skip = (page - 1) * pageSize;
 
     // sorting logic
-    const sortBy = dto.sortBy || 'createdAt';
+    const sortBy = dto.sortBy ?? 'createdAt';
     const sortOrder = dto.sortOrder ?? 'desc';
+
+    //filters
+    const where: Prisma.PropertyWhereInput = {};
+
+    if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
+      where.price = {};
+      if (dto.minPrice !== undefined) where.price.gte = dto.minPrice;
+      if (dto.maxPrice !== undefined) where.price.lte = dto.maxPrice;
+    }
+
+    if (dto.city) {
+      where.city = { contains: dto.city, mode: 'insensitive' };
+    }
+
+    if (dto.country) {
+      where.country = { contains: dto.country, mode: 'insensitive' };
+    }
+
+    if (dto.postalCode) {
+      where.postalCode = { contains: dto.postalCode, mode: 'insensitive' };
+    }
+
+    if (dto.province) {
+      where.province = { contains: dto.province, mode: 'insensitive' };
+    }
+
+    if (dto.address) {
+      where.address = { contains: dto.address, mode: 'insensitive' };
+    }
+
+    if (dto.minSurfaceArea !== undefined || dto.maxSurfaceArea !== undefined) {
+      where.surfaceArea = {};
+      if (dto.minSurfaceArea !== undefined) where.surfaceArea.gte = dto.minSurfaceArea;
+      if (dto.maxSurfaceArea !== undefined) where.surfaceArea.lte = dto.maxSurfaceArea;
+    }
+
+    if (dto.minRooms !== undefined || dto.maxRooms !== undefined) {
+      where.rooms = {};
+      if (dto.minRooms !== undefined) where.rooms.gte = dto.minRooms;
+      if (dto.maxRooms !== undefined) where.rooms.lte = dto.maxRooms;
+    }
+
+    if (dto.type) {
+      where.type = dto.type;
+    }
+
+    if (dto.propertyCondition) {
+      where.propertyCondition = dto.propertyCondition;
+    }
+
+    if (dto.elevator !== undefined) {
+      where.elevator = dto.elevator;
+    }
+
+    if (dto.airConditioning !== undefined) {
+      where.airConditioning = dto.airConditioning;
+    }
+
+    if (dto.concierge !== undefined) {
+      where.concierge = dto.concierge;
+    }
+
+    if (dto.furnished !== undefined) {
+      where.furnished = dto.furnished;
+    }
+
+    if (dto.energyClass) {
+      where.energyClass = { contains: dto.energyClass, mode: 'insensitive' };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.property.findMany({
+        where,
         skip,
         take: pageSize,
         orderBy: {
@@ -126,7 +196,9 @@ export class PropertyService {
           },
         },
       }),
-      this.prisma.property.count(),
+      this.prisma.property.count({
+        where,
+      }),
     ]);
 
     const mappedItems = items.map((item) => ({
@@ -137,6 +209,13 @@ export class PropertyService {
 
     const hasMore = page * pageSize < total;
 
-    return 'ioioih';
+    return {
+      items: mappedItems,
+      hasMore,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 }

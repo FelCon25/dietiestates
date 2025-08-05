@@ -29,6 +29,14 @@ model User {
   @@map("users")
 }
 
+model NotificationPreference {
+  preferenceId Int      @id @default(autoincrement())
+  userId       Int
+  category     NotificationCategory
+  enabled      Boolean @default(true)
+  @@map("notification_preferences")
+}
+
 model Session {
   userId    Int
   userAgent String
@@ -192,4 +200,11 @@ enum PropertyType {
   RENT
   SHORT_TERM
   VACATION
+}
+
+enum NotificationCategory {
+  NEW_PROPERTY
+  VISIT_CONFIRMATION
+  VISIT_REJECTION
+  PROMOTIONAL
 }

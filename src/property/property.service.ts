@@ -104,13 +104,22 @@ export class PropertyService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
-
     // sorting logic
     const sortBy = dto.sortBy || 'createdAt';
-    const sortOrder = dto.sortOrder ?? 'desc';
+  const sortOrder = dto.sortOrder ?? 'desc';
+
+    //filters
+const where: Prisma.PropertyWhereInput = {};
+if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
+  where.price = {};
+
+  if (dto.minPrice !== undefined) where.price.gte = dto.minPrice;
+  if (dto.maxPrice !== undefined) where.price.lte = dto.maxPrice;
+}
 
     const [items, total] = await Promise.all([
       this.prisma.property.findMany({
+        where,
         skip,
         take: pageSize,
         orderBy: {
@@ -126,7 +135,9 @@ export class PropertyService {
           },
         },
       }),
-      this.prisma.property.count(),
+      this.prisma.property.count({
+        where,
+      }),
     ]);
 
     const mappedItems = items.map((item) => ({
@@ -137,6 +148,13 @@ export class PropertyService {
 
     const hasMore = page * pageSize < total;
 
-    return 'ioioih';
+    return {
+      items: mappedItems,
+      hasMore,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 }

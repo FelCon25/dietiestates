@@ -104,6 +104,7 @@ export class PropertyService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
+    
     // sorting logic
     const sortBy = dto.sortBy ?? 'createdAt';
     const sortOrder = dto.sortOrder ?? 'desc';

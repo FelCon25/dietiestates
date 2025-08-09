@@ -164,6 +164,22 @@ CREATE TABLE "property_images" (
     CONSTRAINT "property_images_pkey" PRIMARY KEY ("imageId")
 );
 
+-- CreateTable
+CREATE TABLE "NotificationType" (
+    "notificationTypeId" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "NotificationType_pkey" PRIMARY KEY ("notificationTypeId")
+);
+
+-- CreateTable
+CREATE TABLE "user_notification_preferences" (
+    "userId" INTEGER NOT NULL,
+    "notificationTypeId" INTEGER NOT NULL,
+
+    CONSTRAINT "user_notification_preferences_pkey" PRIMARY KEY ("userId","notificationTypeId")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -172,6 +188,9 @@ CREATE UNIQUE INDEX "Agency_email_key" ON "Agency"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Agency_agencyAdminId_key" ON "Agency"("agencyAdminId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "NotificationType_name_key" ON "NotificationType"("name");
 
 -- AddForeignKey
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("userId") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -208,3 +227,9 @@ ALTER TABLE "SavedSearch" ADD CONSTRAINT "SavedSearch_userId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "property_images" ADD CONSTRAINT "property_images_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "properties"("propertyId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_notification_preferences" ADD CONSTRAINT "user_notification_preferences_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_notification_preferences" ADD CONSTRAINT "user_notification_preferences_notificationTypeId_fkey" FOREIGN KEY ("notificationTypeId") REFERENCES "NotificationType"("notificationTypeId") ON DELETE RESTRICT ON UPDATE CASCADE;

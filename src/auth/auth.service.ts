@@ -62,6 +62,7 @@ export class AuthService {
 
         const hash = await this.hashData(dto.password)
 
+
         const newUser = await this.prisma.user.create({
             data: {
                 email: dto.email,
@@ -71,6 +72,17 @@ export class AuthService {
                 role: dto.role || Role.USER
             }
         });
+
+        const notificationTypes = await this.prisma.notificationType.findMany();
+        if (notificationTypes.length > 0) {
+            await this.prisma.userNotificationPreference.createMany({
+                data: notificationTypes.map(nt => ({
+                    userId: newUser.userId,
+                    notificationTypeId: nt.notificationTypeId,
+                    enabled: true
+                }))
+            });
+        }
 
         if (dto.role === Role.ADMIN_AGENCY) {
             await this.prisma.agencyAdmin.create({

@@ -25,17 +25,12 @@ model User {
   assistant         Assistant?
   sessions          Session[]
   verificationCodes VerificationCode[]
+  notificationPreferences UserNotificationPreference[]
 
   @@map("users")
 }
 
-model NotificationPreference {
-  preferenceId Int      @id @default(autoincrement())
-  userId       Int
-  category     NotificationCategory
-  enabled      Boolean @default(true)
-  @@map("notification_preferences")
-}
+
 
 model Session {
   userId    Int
@@ -182,6 +177,23 @@ model PropertyImage {
   @@map("property_images")
 }
 
+model NotificationType {
+  notificationTypeId Int      @id @default(autoincrement())
+  category           NotificationCategory @unique
+  users              UserNotificationPreference[]
+}
+
+model UserNotificationPreference {
+  userId             Int
+  notificationTypeId Int
+  enabled            Boolean @default(true)
+  user               User             @relation(fields: [userId], references: [userId])
+  notificationType   NotificationType @relation(fields: [notificationTypeId], references: [notificationTypeId])
+
+  @@id([userId, notificationTypeId])
+  @@map("user_notification_preferences")
+}
+
 enum Role {
   USER
   ASSISTANT
@@ -203,8 +215,6 @@ enum PropertyType {
 }
 
 enum NotificationCategory {
-  NEW_PROPERTY
-  VISIT_CONFIRMATION
-  VISIT_REJECTION
   PROMOTIONAL
+  NEW_PROPERTY_MATCH
 }

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { AgencyModule } from './agency/agency.module';
 import { AgencyAdminModule } from './agency-admin/agency-admin.module';
 import { PropertyModule } from './property/property.module';
+import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PropertyModule } from './property/property.module';
     AgencyModule,
     AgencyAdminModule,
     PropertyModule,
+    NotificationPreferencesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

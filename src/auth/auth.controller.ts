@@ -4,10 +4,6 @@ import { LoginDto, RegisterDto } from './dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthUser, RefreshUser } from 'src/types/auth-user.interface';
-import { UseInterceptors, UploadedFile } from '@nestjs/common';
-import { diskStorage } from 'multer';
-import { FileInterceptor } from '@nestjs/platform-express';
-import * as path from 'path';
 import { AccessTokenGuard } from './guards/access-token.guard';
 
 @Controller('auth')
@@ -87,30 +83,6 @@ export class AuthController {
         return { message: 'Password reset successfully' };
     }
 
-
-    @Post('upload-profile-pic')
-    @UseGuards(AccessTokenGuard)
-    @UseInterceptors(FileInterceptor('file', {
-        storage: diskStorage({
-            destination: './uploads/profile-pics',
-            filename: (req, file, cb) => {
-                const ext = path.extname(file.originalname);
-
-                const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-
-                cb(null, filename);
-            }
-        })
-    }))
-    async uploadProfilePic(
-        @UploadedFile() file: Express.Multer.File,
-        @Req() req: Request
-    ) {
-        const user = req.user as AuthUser;
-        const profilePicPath = `/uploads/profile-pics/${file.filename}`;
-        await this.authService.updateProfilePic(user.userId, profilePicPath);
-        return { profilePic: profilePicPath };
-    }
 
     @UseGuards(AuthGuard('refresh'))
     @Post('refresh')

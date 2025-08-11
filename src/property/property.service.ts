@@ -3,42 +3,125 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { SearchPropertyDto } from './dto/search-property.dto';
 import { Prisma } from '@prisma/client';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class PropertyService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async createProperty(agentUserId: number, dto: CreatePropertyDto) {
+
+  async createPropertyWithImages(
+    agentUserId: number, 
+    dto: CreatePropertyDto, 
+    files?: Express.Multer.File[]
+  ) {
+    const agentOrAdmin = await this.validateAgentAndAgency(agentUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const property = await tx.property.create({
+        data: {
+          ...dto,
+          agentId: agentOrAdmin.userId, // Use userId for both agent and admin
+          agencyId: agentOrAdmin.agency.agencyId,
+        },
+      });
+
+      if (files?.length) {
+        await this.processPropertyImages(tx, property.propertyId, files);
+      }
+
+      return this.getPropertyWithDetails(tx, property.propertyId);
+    });
+  }
+
+  private async validateAgentAndAgency(agentUserId: number) {
     const agent = await this.prisma.agent.findUnique({
       where: { userId: agentUserId },
       include: { agency: true },
     });
 
-    if (!agent || !agent.agency) {
-      throw new NotFoundException('Agent or agency not found');
+    if (!agent?.agency) {
+      throw new NotFoundException('Agent with agency not found. Only agents can create properties.');
     }
 
-    const { images, ...propertyData } = dto;
+    return agent;
+  }
 
-    return this.prisma.$transaction(async (tx) => {
-      const property = await tx.property.create({
-        data: {
-          ...propertyData,
-          agentId: agentUserId,
-          agencyId: agent.agency.agencyId,
+
+  private async processPropertyImages(
+    tx: any,
+    propertyId: number,
+    files: Express.Multer.File[]
+  ) {
+    const imageData = await this.moveFilesToPropertyDirectory(propertyId, files);
+    await tx.propertyImage.createMany({ data: imageData });
+    this.cleanupTempDirectory(files[0]);
+  }
+
+
+  private async moveFilesToPropertyDirectory(
+    propertyId: number,
+    files: Express.Multer.File[]
+  ): Promise<Array<{ propertyId: number; url: string; order: number }>> {
+    const propertyImageDir = path.join('uploads', 'property-images', String(propertyId));
+    this.ensureDirectoryExists(propertyImageDir);
+
+    return files.map((file, index) => {
+      const filename = path.basename(file.path);
+      const finalPath = path.join(propertyImageDir, filename);
+      
+      this.moveFile(file.path, finalPath);
+      
+      const url = path.posix.join('/uploads', 'property-images', String(propertyId), filename);
+      
+      return {
+        propertyId,
+        url,
+        order: index,
+      };
+    });
+  }
+
+
+  private ensureDirectoryExists(dirPath: string): void {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  }
+
+
+  private moveFile(sourcePath: string, destinationPath: string): void {
+    try {
+      fs.renameSync(sourcePath, destinationPath);
+    } catch (error) {
+      fs.copyFileSync(sourcePath, destinationPath);
+      fs.unlinkSync(sourcePath);
+    }
+  }
+
+
+  private cleanupTempDirectory(sampleFile: Express.Multer.File): void {
+    const tempDir = (sampleFile as any).destination;
+    if (tempDir?.includes('temp-property-images')) {
+      try {
+        fs.rmSync(path.dirname(tempDir), { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors - temp files will be cleaned up eventually
+            }
+    }
+  }
+
+
+  private async getPropertyWithDetails(tx: any, propertyId: number) {
+    return tx.property.findUnique({
+      where: { propertyId },
+      include: {
+        images: {
+          orderBy: { order: 'asc' },
         },
-      });
-
-      if (images && images.length > 0) {
-        const imagesData = images.map((url, idx) => ({
-          propertyId: property.propertyId,
-          url,
-          order: idx,
-        }));
-        await tx.propertyImage.createMany({ data: imagesData });
-      }
-
-      return property;
+        agency: true,
+      },
     });
   }
 
@@ -217,5 +300,136 @@ export class PropertyService {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  
+  private async ensureAgentOwnsProperty(userId: number, propertyId: number) {
+    const property = await this.prisma.property.findUnique({ 
+      where: { propertyId },
+      include: { agent: true, agency: true }
+    });
+    
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+
+    // Check if user is the agent who owns the property
+    if (property.agentId === userId) {
+      return property;
+    }
+
+    // Check if user is admin of the agency that owns the property
+    const agencyAdmin = await this.prisma.agencyAdmin.findUnique({
+      where: { userId }
+    });
+
+    if (agencyAdmin && property.agencyId === agencyAdmin.userId) {
+      return property;
+    }
+    
+    throw new NotFoundException('Property not found');
+  }
+
+  async addPropertyImages(
+    agentUserId: number,
+    propertyId: number,
+    files: Express.Multer.File[],
+  ) {
+    await this.ensureAgentOwnsProperty(agentUserId, propertyId);
+    
+    if (!files?.length) {
+      return [];
+    }
+
+    const startOrder = await this.getNextImageOrder(propertyId);
+    const imageData = this.buildImageDataForExistingProperty(propertyId, files, startOrder);
+
+    await this.prisma.propertyImage.createMany({ data: imageData });
+
+    return this.prisma.propertyImage.findMany({
+      where: { propertyId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  private async getNextImageOrder(propertyId: number): Promise<number> {
+    const existing = await this.prisma.propertyImage.findMany({
+      where: { propertyId },
+      select: { order: true },
+      orderBy: { order: 'desc' },
+      take: 1,
+    });
+    
+    return existing.length > 0 ? (existing[0].order + 1) : 0;
+  }
+
+  private buildImageDataForExistingProperty(
+    propertyId: number,
+    files: Express.Multer.File[],
+    startOrder: number
+  ) {
+    const baseUrlPath = `/uploads/property-images/${propertyId}`;
+    
+    return files.map((file, index) => ({
+      propertyId,
+      url: path.posix.join(baseUrlPath, path.basename(file.path)),
+      order: startOrder + index,
+    }));
+  }
+
+  async deletePropertyImage(agentUserId: number, propertyId: number, imageId: number) {
+    await this.ensureAgentOwnsProperty(agentUserId, propertyId);
+    const image = await this.prisma.propertyImage.findUnique({ where: { imageId } });
+    if (!image || image.propertyId !== propertyId) {
+      throw new NotFoundException('Image not found');
+    }
+
+    // Attempt to delete the file from disk (best effort)
+    const filePath = path.join(process.cwd(), image.url.replace(/^\//, ''));
+    try { fs.unlinkSync(filePath); } catch (_) {}
+
+    await this.prisma.propertyImage.delete({ where: { imageId } });
+
+    // Normalize orders after deletion
+    const images = await this.prisma.propertyImage.findMany({
+      where: { propertyId },
+      orderBy: { order: 'asc' },
+    });
+    await Promise.all(images.map((img, idx) => this.prisma.propertyImage.update({
+      where: { imageId: img.imageId },
+      data: { order: idx },
+    })));
+
+    return { success: true };
+  }
+
+  async reorderPropertyImages(
+    agentUserId: number,
+    propertyId: number,
+    imageIdsInDesiredOrder: number[],
+  ) {
+    await this.ensureAgentOwnsProperty(agentUserId, propertyId);
+    const images = await this.prisma.propertyImage.findMany({
+      where: { propertyId },
+      select: { imageId: true },
+    });
+    const existingIds = new Set(images.map((i) => i.imageId));
+    for (const id of imageIdsInDesiredOrder) {
+      if (!existingIds.has(id)) {
+        throw new NotFoundException('One or more images not found');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (let index = 0; index < imageIdsInDesiredOrder.length; index++) {
+        const imageId = imageIdsInDesiredOrder[index];
+        await tx.propertyImage.update({ where: { imageId }, data: { order: index } });
+      }
+    });
+
+    return this.prisma.propertyImage.findMany({
+      where: { propertyId },
+      orderBy: { order: 'asc' },
+    });
   }
 }

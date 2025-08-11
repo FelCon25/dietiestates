@@ -14,7 +14,7 @@ export class AgencyController {
     constructor(private readonly agencyService: AgencyService) { }
 
     @Post()
-    @Roles(Role.ADMIN)
+    @Roles(Role.ADMIN_AGENCY)
     async create(@Req() req: Request, @Body() dto: CreateAgencyDto) {
         const user = req.user as AuthUser
         return this.agencyService.create(user.userId, dto);

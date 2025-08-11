@@ -6,9 +6,10 @@ export class AccessTokenGuard extends AuthGuard('access') {
   canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
+    const cookies = request.cookies;
 
-    // If no Authorization header
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Check if we have either Authorization header or accessToken cookie
+    if ((!authHeader || !authHeader.startsWith('Bearer ')) && !cookies?.accessToken) {
       throw new UnauthorizedException({
         statusCode: 401,
         message: 'Unauthorized',
@@ -20,7 +21,6 @@ export class AccessTokenGuard extends AuthGuard('access') {
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    // If there's an error or no user, it means JWT validation failed
     if (err || !user) {
       throw new UnauthorizedException({
         statusCode: 401,

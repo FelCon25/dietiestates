@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { RegisterDto, LoginDto } from './dto';
+import { RegisterDto, LoginDto, RegistrationRole } from './dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
@@ -69,9 +69,17 @@ export class AuthService {
                 firstName: dto.firstName,
                 lastName: dto.lastName,
                 password: hash,
-                role: dto.role || Role.USER
+                role: (dto.role || RegistrationRole.USER) as Role
             }
         });
+
+        if (dto.role === RegistrationRole.ADMIN_AGENCY) {
+            await this.prisma.agencyAdmin.create({
+                data: {
+                    userId: newUser.userId
+                }
+            });
+        }
 
         const notificationTypes = await this.prisma.notificationType.findMany();
         if (notificationTypes.length > 0) {
@@ -84,12 +92,20 @@ export class AuthService {
             });
         }
 
-        if (dto.role === Role.ADMIN_AGENCY) {
-            await this.prisma.agencyAdmin.create({
-                data: {
-                    userId: newUser.userId
-                }
+        // Create agency admin record if user is ADMIN_AGENCY
+        if (dto.role === RegistrationRole.ADMIN_AGENCY) {
+            // Check if agency admin record already exists
+            const existingAgencyAdmin = await this.prisma.agencyAdmin.findUnique({
+                where: { userId: newUser.userId }
             });
+            
+            if (!existingAgencyAdmin) {
+                await this.prisma.agencyAdmin.create({
+                    data: {
+                        userId: newUser.userId
+                    }
+                });
+            }
         }
 
         if (!newUser) {

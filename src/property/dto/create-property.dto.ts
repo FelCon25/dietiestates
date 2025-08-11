@@ -3,11 +3,6 @@ import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsEnum, IsOptional, IsArray 
 
 export class CreatePropertyDto {
 
-    @IsOptional()
-    @IsArray()
-    @IsString({ each: true })
-    images?: string[];
-
     @IsNotEmpty()
     @IsString()
     title: string;

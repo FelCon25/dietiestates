@@ -8,6 +8,10 @@ import {
   Get,
   Param,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFiles,
+  Delete,
+  Patch,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PropertyService } from './property.service';
@@ -18,17 +22,27 @@ import { CreatePropertyDto } from './dto/create-property.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { AccessTokenGuard } from 'src/auth/guards/access-token.guard';
 import { SearchPropertyDto } from './dto/search-property.dto';
+import { FilesInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import { makePropertyImagesStorageConfig, makePropertyCreationStorageConfig } from 'src/utils/multer.config';
+import { ReorderPropertyImagesDto } from './dto/reorder-property-images.dto';
 
 @Controller('property')
 export class PropertyController {
   constructor(private readonly propertyService: PropertyService) { }
 
   @Post()
-  @Roles(Role.AGENT)
+  @Roles(Role.AGENT, Role.ASSISTANT, Role.ADMIN_AGENCY)
   @UseGuards(AccessTokenGuard, RolesGuard)
-  async createProperty(@Req() req: Request, @Body() dto: CreatePropertyDto) {
+  @UseInterceptors(
+    FilesInterceptor('images', 12, makePropertyCreationStorageConfig()),
+  )
+  async createProperty(
+    @Req() req: Request, 
+    @Body() dto: CreatePropertyDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
     const user = req.user as AuthUser;
-    return this.propertyService.createProperty(user.userId, dto);
+    return this.propertyService.createPropertyWithImages(user.userId, dto, files);
   }
 
   @Get()
@@ -52,5 +66,51 @@ export class PropertyController {
   async getPropertyById(@Param('id') id: string) {
     const propertyId = Number(id);
     return this.propertyService.getPropertyById(propertyId);
+  }
+
+  // Upload multiple images for a property
+  @Post(':id/images')
+  @Roles(Role.AGENT)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  @UseInterceptors(
+    FilesInterceptor('files', 12, makePropertyImagesStorageConfig((req) => req.params.id)),
+  )
+  async uploadPropertyImages(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const user = req.user as AuthUser;
+    const propertyId = Number(id);
+    return this.propertyService.addPropertyImages(user.userId, propertyId, files);
+  }
+
+  // Delete a single property image
+  @Delete(':propertyId/images/:imageId')
+  @Roles(Role.AGENT)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async deletePropertyImage(
+    @Req() req: Request,
+    @Param('propertyId') propertyIdParam: string,
+    @Param('imageId') imageIdParam: string,
+  ) {
+    const user = req.user as AuthUser;
+    const propertyId = Number(propertyIdParam);
+    const imageId = Number(imageIdParam);
+    return this.propertyService.deletePropertyImage(user.userId, propertyId, imageId);
+  }
+
+  // Reorder images for a property
+  @Patch(':propertyId/images/reorder')
+  @Roles(Role.AGENT, Role.ADMIN_AGENCY)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async reorderPropertyImages(
+    @Req() req: Request,
+    @Param('propertyId') propertyIdParam: string,
+    @Body() dto: ReorderPropertyImagesDto,
+  ) {
+    const user = req.user as AuthUser;
+    const propertyId = Number(propertyIdParam);
+    return this.propertyService.reorderPropertyImages(user.userId, propertyId, dto.imageIdsInDesiredOrder);
   }
 }

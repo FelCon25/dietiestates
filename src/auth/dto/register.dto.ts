@@ -1,5 +1,10 @@
-import { Role } from "@prisma/client";
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator"
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsEnum } from "class-validator"
+
+// Define allowed roles for registration
+export enum RegistrationRole {
+    USER = 'USER',
+    ADMIN_AGENCY = 'ADMIN_AGENCY'
+}
 
 export class RegisterDto {
     @IsEmail()
@@ -20,6 +25,6 @@ export class RegisterDto {
     lastName: string;
 
     @IsOptional()
-    @IsString()
-    role?: Role
+    @IsEnum(RegistrationRole)
+    role?: RegistrationRole
 }

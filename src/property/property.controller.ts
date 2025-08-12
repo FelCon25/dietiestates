@@ -31,7 +31,7 @@ export class PropertyController {
   constructor(private readonly propertyService: PropertyService) { }
 
   @Post()
-  @Roles(Role.AGENT, Role.ASSISTANT, Role.ADMIN_AGENCY)
+  @Roles(Role.AGENT)
   @UseGuards(AccessTokenGuard, RolesGuard)
   @UseInterceptors(
     FilesInterceptor('images', 12, makePropertyCreationStorageConfig()),

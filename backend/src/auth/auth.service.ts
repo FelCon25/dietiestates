@@ -8,12 +8,16 @@ import { sendMail } from 'src/utils/sendMail';
 import { VerificationType } from 'src/types/verification-type';
 import { getPasswordResetTemplate } from 'src/utils/mail-templates/password-reset.html';
 import { AuthUser } from 'src/types/auth-user.interface';
+import { OAuth2Client } from 'google-auth-library';
+import { randomBytes } from 'crypto';
 
 
 @Injectable()
 export class AuthService {
 
-    constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+    
+
+    constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
     async login(dto: LoginDto, userAgent: string) {
         const user = await this.prisma.user.findUnique({
@@ -42,7 +46,9 @@ export class AuthService {
         const refreshToken = this.getRefreshToken(userSession.sessionId);
         const accessToken = this.getAccessToken(user.userId, userSession.sessionId, user.role);
 
-        return { user, accessToken, refreshToken };
+        const { password, ...userWithoutPassword } = user;
+
+        return { user: userWithoutPassword, accessToken, refreshToken };
     }
 
     hashData(data: string) {
@@ -128,6 +134,74 @@ export class AuthService {
         const accessToken = this.getAccessToken(newUser.userId, userSession.sessionId, newUser.role)
 
         const { password, ...userWithoutPassword } = newUser;
+
+        return { user: userWithoutPassword, accessToken, refreshToken };
+    }
+
+    async googleAuth(token: string, userAgent: string) {
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+
+        const payload = ticket.getPayload();
+
+        if (!payload) {
+            throw new UnauthorizedException('Invalid Google token');
+        }
+
+        if(!payload.email) {
+            throw new BadRequestException('Google account has no email associated');
+        }
+
+        // Check if user exists
+
+        let user = await this.prisma.user.findUnique({
+            where: {
+                email: payload.email
+            }
+        });
+
+        if (!user){
+            //random password generation
+            const hashedPassword = await this.hashData(randomBytes(16).toString('hex'));
+
+            user = await this.prisma.user.create({
+                data: {
+                    email: payload.email,
+                    firstName: payload.given_name || '',
+                    lastName: payload.family_name || '',
+                    password: hashedPassword,
+                    role: Role.USER,
+                    provider: 'google',
+                }
+            });
+
+            if (!user) 
+                throw new InternalServerErrorException('User registration failed');
+        }
+
+        if (user.provider !== 'google') {
+            throw new BadRequestException(`Email is already registered without Google.`);
+        }
+
+        const userSession = await this.prisma.session.create({
+            data: {
+                userId: user.userId,
+                userAgent: userAgent || '',
+                expiresAt: new Date(Date.now() + 2592000000) // 30 days in milliseconds
+            }
+        });
+
+        if (!userSession)
+            throw new InternalServerErrorException('Session creation failed, try to login');
+
+        const refreshToken = this.getRefreshToken(userSession.sessionId);
+        const accessToken = this.getAccessToken(user.userId, userSession.sessionId, user.role);
+
+        const { password, ...userWithoutPassword } = user;
 
         return { user: userWithoutPassword, accessToken, refreshToken };
     }

@@ -5,6 +5,7 @@ import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthUser, RefreshUser } from 'src/types/auth-user.interface';
 import { AccessTokenGuard } from './guards/access-token.guard';
+import attachCookies from 'src/utils/cookies';
 
 @Controller('auth')
 export class AuthController {
@@ -17,18 +18,7 @@ export class AuthController {
         @Res() res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.login(dto, userAgent);
 
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            maxAge: 15 * 60 * 1000, // 15 minutes
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
+        attachCookies(res, accessToken, refreshToken);
 
         return res.json({ user });
     }
@@ -40,18 +30,19 @@ export class AuthController {
         @Res() res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.register(dto, userAgent);
 
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            maxAge: 15 * 60 * 1000, // 15 minutes
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
+        attachCookies(res, accessToken, refreshToken);
+
+        return res.json({ user });
+    }
+
+    @Post('google-auth')
+    @HttpCode(HttpStatus.OK)
+    async googleSignIn(@Body('token') token: string,
+        @Headers('user-agent') userAgent: string,
+        @Res() res: Response) {
+        const { user, accessToken, refreshToken } = await this.authService.googleAuth(token, userAgent);
+
+        attachCookies(res, accessToken, refreshToken);
 
         return res.json({ user });
     }

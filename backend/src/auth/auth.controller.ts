@@ -84,10 +84,6 @@ export class AuthController {
 
         const { accessToken } = await this.authService.refreshToken(session);
 
-        console.log(req);
-
-        //attachCookies(res, accessToken, req);
-
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             maxAge: 15 * 60 * 1000, // 15 minutes

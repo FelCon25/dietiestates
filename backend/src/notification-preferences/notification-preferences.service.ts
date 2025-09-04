@@ -7,10 +7,17 @@ export class NotificationPreferencesService {
     constructor(private readonly prisma: PrismaService) {}
 
     async getPreferencesByUserId(userId: number) {
-        return this.prisma.userNotificationPreference.findMany({
+        const prefs = await this.prisma.userNotificationPreference.findMany({
             where: { userId },
-            include: { notificationType: true }
+            include: {
+                notificationType: true
+            }
         });
+
+        return prefs.map(pref => ({
+            enabled: pref.enabled,
+            category: pref.notificationType.category
+        }));
     }
 
     async updatePreferenceForCategory(userId: number, category: NotificationCategory, enabled: boolean) {

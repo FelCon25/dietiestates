@@ -21,8 +21,7 @@ export const makeProfilePicStorageConfig = (getUserId: (req: Request) => string 
       file: Express.Multer.File,
       cb: (error: Error | null, filename: string) => void,
     ) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `profile${ext}`);
+      cb(null, file.originalname);
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },

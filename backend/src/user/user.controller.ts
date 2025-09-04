@@ -47,9 +47,12 @@ export class UserController {
         if (!file) {
             throw new BadRequestException('No file uploaded');
         }
+
         const authUser = req.user as AuthUser;
         const imagePath = `/uploads/profile-pics/${authUser.userId}/${file.filename}`;
+
         await this.userService.updateProfilePic(Number(authUser.userId), imagePath);
+        
         return { profilePic: imagePath };
     }
 }

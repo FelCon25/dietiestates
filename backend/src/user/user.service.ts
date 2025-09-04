@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+//import path, { join } from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class UserService {
@@ -18,7 +21,8 @@ export class UserService {
                 profilePic: true,
                 role: true,
                 createdAt: true,
-                updatedAt: true
+                updatedAt: true,
+                provider: true
             }
         });
         
@@ -69,9 +73,23 @@ export class UserService {
         if (!user) {
             throw new NotFoundException('User not found');
         }
+
+        if(user.profilePic){
+            await this.deleteProfilePicIfExists(user.profilePic);
+        }
+
         await this.prisma.user.update({
             where: { userId },
             data: { profilePic: imagePath },
         });
+    }
+
+    private async deleteProfilePicIfExists(profilePicPath: string) {
+        if(!profilePicPath) return;
+
+        const filePath = path.join(process.cwd(), profilePicPath);
+        if(fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
     }
 }

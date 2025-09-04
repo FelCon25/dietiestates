@@ -20,7 +20,7 @@ export class AuthController {
 
         attachCookies(res, accessToken, refreshToken);
 
-        return res.json({ user });
+        return res.json(user);
     }
 
     @Post('register')
@@ -32,7 +32,7 @@ export class AuthController {
 
         attachCookies(res, accessToken, refreshToken);
 
-        return res.json({ user });
+        return res.json(user);
     }
 
     @Post('google-auth')
@@ -44,7 +44,7 @@ export class AuthController {
 
         attachCookies(res, accessToken, refreshToken);
 
-        return res.json({ user });
+        return res.json(user);
     }
 
     @UseGuards(AccessTokenGuard)
@@ -83,6 +83,10 @@ export class AuthController {
         const session = req.user as { sessionId: number, userId: number, expiresAt: Date };
 
         const { accessToken } = await this.authService.refreshToken(session);
+
+        console.log(req);
+
+        //attachCookies(res, accessToken, req);
 
         res.cookie('accessToken', accessToken, {
             httpOnly: true,

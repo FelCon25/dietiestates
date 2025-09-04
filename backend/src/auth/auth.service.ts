@@ -22,7 +22,8 @@ export class AuthService {
     async login(dto: LoginDto, userAgent: string) {
         const user = await this.prisma.user.findUnique({
             where: {
-                email: dto.email
+                email: dto.email,
+                provider: 'local'
             }
         });
         if (!user)
@@ -79,6 +80,10 @@ export class AuthService {
             }
         });
 
+        if (!newUser) {
+            throw new InternalServerErrorException('User registration failed');
+        }
+
         if (dto.role === RegistrationRole.ADMIN_AGENCY) {
             await this.prisma.agencyAdmin.create({
                 data: {
@@ -87,15 +92,18 @@ export class AuthService {
             });
         }
 
-        const notificationTypes = await this.prisma.notificationType.findMany();
-        if (notificationTypes.length > 0) {
-            await this.prisma.userNotificationPreference.createMany({
-                data: notificationTypes.map(nt => ({
-                    userId: newUser.userId,
-                    notificationTypeId: nt.notificationTypeId,
-                    enabled: true
-                }))
-            });
+        // Crate default notification preferences for regular users
+        if(newUser.role === Role.USER) {
+            const notificationTypes = await this.prisma.notificationType.findMany();
+            if (notificationTypes.length > 0) {
+                await this.prisma.userNotificationPreference.createMany({
+                    data: notificationTypes.map(nt => ({
+                        userId: newUser.userId,
+                        notificationTypeId: nt.notificationTypeId,
+                        enabled: true
+                    }))
+                });
+            }
         }
 
         // Create agency admin record if user is ADMIN_AGENCY
@@ -112,10 +120,6 @@ export class AuthService {
                     }
                 });
             }
-        }
-
-        if (!newUser) {
-            throw new InternalServerErrorException('User registration failed');
         }
 
         const userSession = await this.prisma.session.create({

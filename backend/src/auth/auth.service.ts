@@ -10,6 +10,7 @@ import { getPasswordResetTemplate } from 'src/utils/mail-templates/password-rese
 import { AuthUser } from 'src/types/auth-user.interface';
 import { OAuth2Client } from 'google-auth-library';
 import { randomBytes } from 'crypto';
+import { log } from 'console';
 
 
 @Injectable()
@@ -275,9 +276,22 @@ export class AuthService {
             throw new UnauthorizedException('User not found');
         }
 
+        let refreshToken: string | null = null;
+        
+        // If session is older than 7 day, extend it
+        if(dbSession.expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000) {
+            const newExpiry = new Date(Date.now() + 2592000000); // 30 days from now
+            await this.prisma.session.update({
+                where: { sessionId: dbSession.sessionId },
+                data: { expiresAt: newExpiry }
+            });
+
+            refreshToken = this.getRefreshToken(dbSession.sessionId);
+        }
+
         const accessToken = this.getAccessToken(dbSession.userId, dbSession.sessionId, user.role);
 
-        return { accessToken };
+        return { accessToken, refreshToken };
     }
 
     async sendPasswordReset(email: string) {

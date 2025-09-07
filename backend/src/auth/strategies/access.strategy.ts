@@ -32,6 +32,13 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'access') {
     }
 
     async validate(payload: AuthUser): Promise<AuthUser> {
+        const session = await this.prisma.session.findUnique({
+            where: { sessionId: payload.sessionId },
+        });
+
+        if (!session || session.userId !== payload.userId) {
+            throw new UnauthorizedException('Invalid session');
+        }
         return payload;
     }
 }

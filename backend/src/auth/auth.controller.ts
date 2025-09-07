@@ -82,7 +82,7 @@ export class AuthController {
 
         const session = req.user as { sessionId: number, userId: number, expiresAt: Date };
 
-        const { accessToken } = await this.authService.refreshToken(session);
+        const { accessToken, refreshToken } = await this.authService.refreshToken(session);
 
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
@@ -90,6 +90,15 @@ export class AuthController {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
         });
+
+        if (refreshToken) {
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            });  
+        }
 
         return res.json({ message: 'Access token refreshed' });
     }

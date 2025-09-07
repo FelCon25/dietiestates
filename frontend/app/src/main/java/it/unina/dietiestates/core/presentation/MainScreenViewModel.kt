@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import it.unina.dietiestates.app.Route
 import it.unina.dietiestates.core.data.tokens.TokenManager
-import it.unina.dietiestates.core.domain.Result
+import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.User
+import it.unina.dietiestates.core.domain.onError
+import it.unina.dietiestates.core.domain.onLoading
+import it.unina.dietiestates.core.domain.onSuccess
 import it.unina.dietiestates.features.auth.domain.AuthRepository
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -38,13 +40,15 @@ class MainScreenViewModel(
 
         viewModelScope.launch {
             val accessToken = tokenManager.getAccessToken()
-            _state.update {
-                it.copy(
-                    startDestination = if (accessToken != null) Route.UserGraph else Route.AuthGraph
-                )
-            }
 
-            if(accessToken != null){
+            if(accessToken == null){
+                _state.update {
+                    it.copy(
+                        startDestination = Route.AuthGraph
+                    )
+                }
+            }
+            else{
                 getMe()
             }
         }
@@ -69,23 +73,46 @@ class MainScreenViewModel(
 
     suspend fun getMe(){
         authRepository.getMe().collect { result ->
-            when(result){
-                is Result.Success -> {
+
+            result.apply {
+                onSuccess { user ->
                     _state.update {
-                        it.copy(user = result.data)
+                        it.copy(user = user)
                     }
-
-                    println("User fetched: ${_state.value.user?.email}")
+                    _state.update {
+                        it.copy(
+                            startDestination = getStartDestinationFromRole(user.role)
+                        )
+                    }
                 }
 
-                is Result.Error -> {
-                    //println("Error: ${result.error.name}")
+                onError { error ->
+                    when(error){
+                        is DataError.Remote.Unauthorized -> {
+                            _state.update {
+                                it.copy(startDestination = Route.AuthGraph)
+                            }
+                        }
+                        else -> {
+                            println("Error: $error")
+                        }
+                    }
                 }
 
-                is Result.IsLoading -> {
+                onLoading {
 
                 }
             }
+        }
+    }
+
+    fun getStartDestinationFromRole(role: String): Route{
+        return when(role){
+            "USER" -> Route.UserGraph
+            "ASSISTANT" -> Route.AssistantGraph
+            "AGENT" -> Route.AgentGraph
+            "ADMIN_AGENCY" -> Route.AdminGraph
+            else -> Route.UserGraph
         }
     }
 

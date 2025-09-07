@@ -21,11 +21,8 @@ import io.ktor.http.encodedPath
 import io.ktor.serialization.kotlinx.json.json
 import it.unina.dietiestates.BuildConfig
 import it.unina.dietiestates.core.data.tokens.TokenManager
-import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.onError
 import it.unina.dietiestates.core.domain.onSuccess
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 object HttpClientFactory {
@@ -48,6 +45,7 @@ object HttpClientFactory {
             install(Auth) {
                 bearer {
                     loadTokens {
+                        println("Tokens loaded!")
                         val access = tokenManager.getAccessToken()
                         val refresh = tokenManager.getRefreshToken()
 
@@ -60,21 +58,24 @@ object HttpClientFactory {
 
                     sendWithoutRequest { request ->
                         val path = request.url.encodedPath
-                        !path.startsWith("/auth/refresh") && !path.startsWith("/auth/login") && !path.startsWith("/auth/register")
+                        !path.startsWith("/auth/refresh") &&
+                        !path.startsWith("/auth/login") &&
+                        !path.startsWith("/auth/register")
                     }
 
                     refreshTokens {
                         val refresh = tokenManager.getRefreshToken() ?: return@refreshTokens null
+
                         safeAuthCall<Unit> {
                             client.post("${BuildConfig.BASE_URL}/auth/refresh") {
-                                headers { append(HttpHeaders.Authorization, "Bearer $refresh") }
+                                headers {
+                                    append(HttpHeaders.Authorization, "Bearer $refresh")
+                                }
                                 markAsRefreshTokenRequest()
                             }
                         }
                         .onSuccess { _, tokens ->
-                            if (tokens.refresh != null){
-                                tokenManager.saveTokens(tokens.access, tokens.refresh)
-                            }
+                            tokenManager.saveTokens(tokens.access, tokens.refresh ?: refresh)
                             return@refreshTokens BearerTokens(tokens.access, tokens.refresh ?: refresh)
                         }
                         .onError {

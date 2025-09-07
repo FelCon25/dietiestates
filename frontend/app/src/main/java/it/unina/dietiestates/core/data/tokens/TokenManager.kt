@@ -32,6 +32,7 @@ class TokenManager(private val context: Context) {
     }
 
     suspend fun clearTokens() {
+        println("Tokens cleared!")
         context.dataStore.edit { preferences ->
             preferences.remove(accessTokenKey)
             preferences.remove(refreshTokenKey)

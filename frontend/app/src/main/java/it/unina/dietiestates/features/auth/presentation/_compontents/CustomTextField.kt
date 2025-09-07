@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun CustomTextField(
@@ -53,6 +55,7 @@ fun CustomTextField(
         onValueChange = onValueChange,
         singleLine = true,
         visualTransformation = if(showPassword || !isPasswordTextField) VisualTransformation.None else PasswordVisualTransformation(),
+        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
         decorationBox = {
             Row(
                 modifier = Modifier

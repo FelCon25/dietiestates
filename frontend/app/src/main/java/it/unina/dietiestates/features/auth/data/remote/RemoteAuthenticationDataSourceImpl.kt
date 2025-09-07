@@ -1,6 +1,8 @@
 package it.unina.dietiestates.features.auth.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.auth.authProvider
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -15,6 +17,7 @@ import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.ResultWithTokens
+import it.unina.dietiestates.core.domain.onSuccess
 
 class RemoteAuthenticationDataSourceImpl(
     private val httpClient: HttpClient
@@ -74,8 +77,10 @@ class RemoteAuthenticationDataSourceImpl(
     }
 
     override suspend fun logout(): EmptyResult<DataError.Remote> {
-        return safeCall {
+        return safeCall<Unit> {
             httpClient.post(urlString = "$BASE_URL/auth/logout")
+        }.onSuccess {
+            httpClient.authProvider<BearerAuthProvider>()?.clearToken()
         }
     }
 

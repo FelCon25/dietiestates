@@ -97,12 +97,7 @@ class RegisterScreenViewModel(
         }
         else{
             viewModelScope.launch {
-                repository.register(
-                    email = _state.value.email,
-                    firstName = _state.value.firstName,
-                    lastName = _state.value.lastName,
-                    password = _state.value.password
-                ).collect { result ->
+                repository.register(email = _state.value.email, firstName = _state.value.firstName, lastName = _state.value.lastName, password = _state.value.password).collect { result ->
 
                     result.apply {
                         onSuccess { user ->
@@ -112,7 +107,7 @@ class RegisterScreenViewModel(
                         onError { error ->
                             when(error){
                                 is DataError.Remote.CustomError -> onEvent(RegisterScreenEvent.OnRegisterFailed(error.errorMessage))
-                                else -> RegisterScreenEvent.OnRegisterFailed("There was a problem with registration, please try again.")
+                                else -> onEvent(RegisterScreenEvent.OnRegisterFailed("There was a problem with registration, please try again."))
                             }
                         }
 

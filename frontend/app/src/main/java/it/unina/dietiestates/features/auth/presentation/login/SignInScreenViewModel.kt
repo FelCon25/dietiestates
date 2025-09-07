@@ -9,7 +9,6 @@ import it.unina.dietiestates.core.domain.onLoading
 import it.unina.dietiestates.core.domain.onSuccess
 import it.unina.dietiestates.features.auth.domain.AuthRepository
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -80,6 +79,7 @@ class SignInScreenViewModel(
 
                 repository.signIn(email = _state.value.email, password = _state.value.password).collect{ result ->
                     result.apply {
+
                         onSuccess { user ->
                             onEvent(SignInScreenEvent.OnSignInSucceeded(user))
                         }

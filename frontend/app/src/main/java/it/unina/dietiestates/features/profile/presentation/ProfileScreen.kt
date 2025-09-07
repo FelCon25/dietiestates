@@ -23,15 +23,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.House
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,7 +55,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import it.unina.dietiestates.BuildConfig
-import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.features.profile.presentation._components.SessionItem
 import org.koin.androidx.compose.koinViewModel
 
@@ -67,7 +62,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ProfileScreen(
     viewModel: ProfileScreenViewModel = koinViewModel(),
-    onBackNavigation: (userUpdated: User) -> Unit
+    onBackNavigation: () -> Unit
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -89,7 +84,7 @@ fun ProfileScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            onBackNavigation(state.user!!)
+                            onBackNavigation()
                         }
                     ) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Arrow back icon")

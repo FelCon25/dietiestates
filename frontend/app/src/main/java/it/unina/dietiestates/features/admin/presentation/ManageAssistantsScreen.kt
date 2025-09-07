@@ -1,4 +1,4 @@
-package it.unina.dietiestates.features.property.presentation.home
+package it.unina.dietiestates.features.admin.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -7,15 +7,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import it.unina.dietiestates.app.Route
-import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun HomeScreen(
-    viewModel: HomeScreenViewModel = koinViewModel(),
+fun ManageAssistantsScreen(
     topBar: @Composable () -> Unit,
     bottomBar: @Composable (Route, () -> Unit) -> Unit,
 ) {
@@ -40,6 +39,7 @@ fun HomeScreen(
                 .background(Color.Gray)
         ) {
 
+            Text("Manage assistants screen")
         }
     }
 

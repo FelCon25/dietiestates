@@ -11,6 +11,56 @@ import { getAccountCreatedTemplate } from 'src/utils/mail-templates/account-crea
 export class AgencyAdminService {
     constructor(private readonly prisma: PrismaService) { }
 
+    async getAssistants(adminUserId: number) {
+        const admin = await this.prisma.agencyAdmin.findUnique({
+            where: { userId: adminUserId },
+            include: { agency: {
+                select: { agencyId: true}
+            } }
+        });
+        if (!admin) {
+            throw new NotFoundException('Admin not found');
+        }
+        if (!admin.agency) {
+            throw new BadRequestException('Admin does not have an agency');
+        }
+
+        const assistants = await this.prisma.assistant.findMany({
+            where: { agencyId: admin.agency.agencyId },
+            include: { 
+                user: { omit: { password: true} }
+            }
+        });
+
+       return assistants.map(assistant => ({...assistant.user}));    
+    }
+
+
+    async getAgents(adminUserId: number) {
+        const admin = await this.prisma.agencyAdmin.findUnique({
+            where: { userId: adminUserId },
+            include: { agency: {
+                select: { agencyId: true}
+            } }
+        });
+        if (!admin) {
+            throw new NotFoundException('Admin not found');
+        }
+        if (!admin.agency) {
+            throw new BadRequestException('Admin does not have an agency');
+        }
+
+        const agents = await this.prisma.agent.findMany({
+            where: { agencyId: admin.agency.agencyId },
+            include: { 
+                user: { omit: { password: true} }
+            }
+        });
+
+       return agents.map(agent => ({...agent.user}));    
+    }
+
+
     async createAssistant(adminUserId: number, dto: CreateAssistantDto) {
         const admin = await this.prisma.agencyAdmin.findUnique({
             where: { userId: adminUserId },

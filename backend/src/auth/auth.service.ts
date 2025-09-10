@@ -278,7 +278,7 @@ export class AuthService {
 
         let refreshToken: string | null = null;
         
-        // If session is older than 7 day, extend it
+        // If session is expiring in less than 7 days, extend it
         if(dbSession.expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000) {
             const newExpiry = new Date(Date.now() + 2592000000); // 30 days from now
             await this.prisma.session.update({

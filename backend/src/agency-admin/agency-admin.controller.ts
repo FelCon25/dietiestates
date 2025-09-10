@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { AgencyAdminService } from './agency-admin.service';
 import { Roles } from 'src/auth/guards/roles.decorator';
@@ -13,6 +13,20 @@ import { AccessTokenGuard } from 'src/auth/guards/access-token.guard';
 @UseGuards(AccessTokenGuard, RolesGuard)
 export class AgencyAdminController {
     constructor(private readonly agencyAdminService: AgencyAdminService) { }
+
+    @Get('assistants')
+    @Roles(Role.ADMIN_AGENCY)
+    async getAssistants(@Req() req: Request) {
+        const user = req.user as AuthUser;
+        return this.agencyAdminService.getAssistants(user.userId);
+    }
+
+    @Get('agents')
+    @Roles(Role.ADMIN_AGENCY)
+    async getAgents(@Req() req: Request) {
+        const user = req.user as AuthUser;
+        return this.agencyAdminService.getAgents(user.userId);
+    }
 
     @Post('assistant')
     @Roles(Role.ADMIN_AGENCY)

@@ -4,20 +4,29 @@ package it.unina.dietiestates.core.presentation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.lifecycle.ViewModel
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import it.unina.dietiestates.app.BottomBarScreen
 import it.unina.dietiestates.app.Route
 import it.unina.dietiestates.core.presentation._compontents.BottomNavigationBar
 import it.unina.dietiestates.core.presentation._compontents.TopBar
-import it.unina.dietiestates.features.admin.presentation.ManageAssistantsScreen
+import it.unina.dietiestates.features.admin.presentation.addAgent.AdminAddAgentScreen
+import it.unina.dietiestates.features.admin.presentation.addAssistant.AdminAddAssistantScreen
+import it.unina.dietiestates.features.admin.presentation.adminScreen.AdminScreen
+import it.unina.dietiestates.features.admin.presentation.adminScreen.AdminScreenViewModel
 import it.unina.dietiestates.features.auth.presentation.authGraph
 import it.unina.dietiestates.features.profile.presentation.ProfileScreen
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreen
 import it.unina.dietiestates.features.property.presentation.home.HomeScreen
 import it.unina.dietiestates.features.property.presentation.savedSearches.SavedSearchesScreen
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewModel){
@@ -55,6 +64,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
                 },
                 bottomBar = { route, onScroll ->
                     BottomNavigationBar(
+                        screens = listOf(BottomBarScreen.Home, BottomBarScreen.SavedSearches, BottomBarScreen.Bookmarks),
                         navController = navController,
                         currentRoute = route,
                         scrollTop = onScroll
@@ -63,6 +73,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
             )
 
             adminScreens(
+                navController = navController,
                 topBar = {
                     state.user?.let { user ->
                         TopBar(
@@ -72,9 +83,6 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
                             }
                         )
                     }
-                },
-                bottomBar = { _, _ ->
-
                 }
             )
 
@@ -120,22 +128,68 @@ private fun NavGraphBuilder.userScreens(
 }
 
 private fun NavGraphBuilder.adminScreens(
-    topBar: @Composable () -> Unit,
-    bottomBar: @Composable (Route, () -> Unit) -> Unit
+    navController: NavController,
+    topBar: @Composable () -> Unit
 ){
 
     navigation<Route.AdminGraph>(
-        startDestination = Route.ManageAssistants
+        startDestination = Route.Admin
     ){
 
-        composable<Route.ManageAssistants> {
-            ManageAssistantsScreen(topBar = topBar, bottomBar = bottomBar)
+        composable<Route.Admin> {
+            val viewModel = it.sharedKoinViewModel<AdminScreenViewModel>(navController = navController)
+
+            AdminScreen(
+                viewModel = viewModel,
+                topBar = topBar,
+                onAddNewAssistant = {
+                    navController.navigate(Route.AdminAddAssistant)
+                },
+                onAddNewAgent = {
+                    navController.navigate(Route.AdminAddAgent)
+                }
+            )
         }
 
-        composable<Route.ManageAgents> {
+        composable<Route.AdminAddAssistant> {
+            val viewModel = it.sharedKoinViewModel<AdminScreenViewModel>(navController = navController)
 
+            AdminAddAssistantScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                },
+                onNewAssistantAdded = { assistant ->
+                    viewModel.onNewAssistantAdded(assistant)
+                    navController.navigateUp()
+                }
+            )
         }
 
+        composable<Route.AdminAddAgent> {
+            val viewModel = it.sharedKoinViewModel<AdminScreenViewModel>(navController = navController)
+
+            AdminAddAgentScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                },
+                onNewAgentAdded = { agent ->
+                    viewModel.onNewAgentAdded(agent)
+                    navController.navigateUp()
+                }
+            )
+        }
     }
+}
 
+@Composable
+private inline fun <reified T: ViewModel> NavBackStackEntry.sharedKoinViewModel(
+    navController: NavController
+): T {
+    val navGraphRoute = destination.parent?.route ?: return koinViewModel<T>()
+    val parentEntry = remember(this) {
+        navController.getBackStackEntry(navGraphRoute)
+    }
+    return koinViewModel(
+        viewModelStoreOwner = parentEntry
+    )
 }

@@ -18,10 +18,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import it.unina.dietiestates.app.BottomBarScreen
 import it.unina.dietiestates.app.Route
-import it.unina.dietiestates.app.screens
-
 @Composable
 fun BottomNavigationBar(
+    screens: List<BottomBarScreen>,
     navController: NavHostController,
     currentRoute: Route,
     scrollTop: () -> Unit
@@ -30,9 +29,8 @@ fun BottomNavigationBar(
     NavigationBar(
         modifier = Modifier
             .navigationBarsPadding()
-            .height(72.dp),
-        containerColor = MaterialTheme.colorScheme.background
-    ){
+            .height(72.dp))
+    {
         screens.forEach { screen ->
             AddItem(
                 screen = screen,
@@ -86,7 +84,6 @@ fun RowScope.AddItem(
         },
         colors = NavigationBarItemDefaults.colors(
             indicatorColor = MaterialTheme.colorScheme.primary,
-            selectedTextColor = MaterialTheme.colorScheme.primary,
             selectedIconColor = Color.White
         )
     )

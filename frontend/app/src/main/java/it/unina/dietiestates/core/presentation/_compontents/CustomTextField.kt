@@ -1,4 +1,4 @@
-package it.unina.dietiestates.features.auth.presentation._compontents
+package it.unina.dietiestates.core.presentation._compontents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +20,7 @@ import androidx.compose.material3.ShapeDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,8 +41,8 @@ fun CustomTextField(
     isPasswordTextField: Boolean = false
 ) {
 
-    var isTextFieldFocused by remember{ mutableStateOf(false)}
-    var showPassword by remember { mutableStateOf(false) }
+    var isTextFieldFocused by rememberSaveable { mutableStateOf(false)}
+    var showPassword by rememberSaveable { mutableStateOf(false) }
 
     BasicTextField(
         modifier = modifier

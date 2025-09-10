@@ -1,9 +1,7 @@
 package it.unina.dietiestates.core.presentation
 
 import android.app.Activity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,9 +46,8 @@ fun MainScreen(
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = Modifier.fillMaxSize(),
+        //color = Color(0xFFebfcef)
     ) {
         MainNavGraph(navController = navController, viewModel)
     }

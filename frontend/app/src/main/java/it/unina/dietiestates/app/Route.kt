@@ -29,9 +29,11 @@ sealed interface Route {
     @Serializable
     data object AdminGraph: Route
     @Serializable
-    data object ManageAssistants: Route
+    data object Admin: Route
     @Serializable
-    data object ManageAgents: Route
+    data object AdminAddAssistant: Route
+    @Serializable
+    data object AdminAddAgent: Route
 
 
     //Assistant

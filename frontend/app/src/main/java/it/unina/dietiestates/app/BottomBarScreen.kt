@@ -37,9 +37,3 @@ sealed class BottomBarScreen(
         activeIcon = Icons.Filled.Bookmarks
     )
 }
-
-val screens = listOf(
-    BottomBarScreen.Home,
-    BottomBarScreen.SavedSearches,
-    BottomBarScreen.Bookmarks
-)

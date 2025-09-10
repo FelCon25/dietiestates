@@ -50,7 +50,7 @@ import it.unina.dietiestates.R
 import it.unina.dietiestates.core.data.googleAuth.GoogleAuthUtil
 import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
-import it.unina.dietiestates.features.auth.presentation._compontents.CustomTextField
+import it.unina.dietiestates.core.presentation._compontents.CustomTextField
 import it.unina.dietiestates.features.auth.presentation._compontents.GoogleSignInButton
 import it.unina.dietiestates.ui.theme.Green80
 import kotlinx.coroutines.launch

@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,6 +82,9 @@ fun ProfileScreen(
     )
 
     Scaffold(
+        modifier = Modifier
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -113,214 +119,219 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
         ) {
 
-            state.user?.let { user ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 16.dp)
-                        .padding(horizontal = 16.dp)
-                ) {
-
+            if(state.isLoading){
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            else{
+                state.user?.let { user ->
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 16.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
 
-                        Box(
-                            modifier = Modifier
-                                .size(128.dp)
-                                .clip(RoundedCornerShape(percent = 100))
-                                .clickable {
-                                    launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                }
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-
-                            if(user.profilePic != null){
-                                AsyncImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    model = BuildConfig.BASE_URL + state.user?.profilePic,
-                                    contentDescription = "User profile picture",
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            else{
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ){}
-                            }
 
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ){
-                                Icon(
-                                    modifier = Modifier.size(48.dp),
-                                    imageVector = Icons.Outlined.AddAPhoto,
-                                    contentDescription = "Add a photo icon",
-                                    tint = Color.White
-                                )
+                                    .size(128.dp)
+                                    .clip(RoundedCornerShape(percent = 100))
+                                    .clickable {
+                                        launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    }
+                            ) {
+
+                                if(user.profilePic != null){
+                                    AsyncImage(
+                                        modifier = Modifier.fillMaxSize(),
+                                        model = BuildConfig.BASE_URL + state.user?.profilePic,
+                                        contentDescription = "User profile picture",
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                else{
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.primary),
+                                        contentAlignment = Alignment.Center
+                                    ){}
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.3f)),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Icon(
+                                        modifier = Modifier.size(48.dp),
+                                        imageVector = Icons.Outlined.AddAPhoto,
+                                        contentDescription = "Add a photo icon",
+                                        tint = Color.White
+                                    )
+                                }
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "${user.firstName} ${user.lastName}",
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp
+                            )
                         }
+
+                        Spacer(
+                            modifier = Modifier.height(32.dp)
+                        )
+
+                        Text(
+                            text = "Info",
+                            color = MaterialTheme.colorScheme.primary
+                        )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            modifier = Modifier.fillMaxWidth(),
-                            text = "${user.firstName} ${user.lastName}",
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
-                        )
-                    }
-
-                    Spacer(
-                        modifier = Modifier.height(32.dp)
-                    )
-
-                    Text(
-                        text = "Info",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Outlined.Email, contentDescription = "Email icon")
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = user.email
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Outlined.Phone, contentDescription = "Phone icon")
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = user.phone ?: "Phone number not entered."
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Text(
-                        text = "Notifications",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .clip(ShapeDefaults.Medium)
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Default.House, contentDescription = "House icon")
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(imageVector = Icons.Outlined.Email, contentDescription = "Email icon")
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             Text(
-                                text = "New property notifications",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "Enable notifications about properties that may interest you.",
-                                fontSize = 12.sp
+                                text = user.email
                             )
                         }
 
-                        Switch(
-                            checked = state.notificationPreferences.find { it.category == "NEW_PROPERTY_MATCH" }?.enabled ?: false,
-                            onCheckedChange = { }
-                        )
-                    }
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .clip(ShapeDefaults.Medium)
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Filled.Campaign, contentDescription = "Campaign Icon")
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(imageVector = Icons.Outlined.Phone, contentDescription = "Phone icon")
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             Text(
-                                text = "Promotional notifications",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "Enable notifications to receive promotional messages.",
-                                fontSize = 12.sp
+                                text = user.phone ?: "Phone number not entered."
                             )
                         }
 
-                        Switch(
-                            checked = state.notificationPreferences.find { it.category == "PROMOTIONAL" }?.enabled ?: false,
-                            onCheckedChange = {
+                        Spacer(modifier = Modifier.height(32.dp))
 
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Text(
-                        text = "Sessions",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    repeat(state.sessions.size) { i ->
-
-                        val session = state.sessions[i]
-                        val isCurrentSession = session.sessionId == state.currentSessionId
-
-                        SessionItem(
-                            session = session,
-                            onSessionDelete = {
-                                if(isCurrentSession){
-                                    viewModel.logout()
-                                }
-                                else{
-                                    viewModel.deleteSession(session.sessionId)
-                                }
-                            },
-                            isCurrentSession = isCurrentSession
+                        Text(
+                            text = "Notifications",
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .clip(ShapeDefaults.Medium)
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Default.House, contentDescription = "House icon")
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                            ) {
+                                Text(
+                                    text = "New property notifications",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    text = "Enable notifications about properties that may interest you.",
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Switch(
+                                checked = state.notificationPreferences.find { it.category == "NEW_PROPERTY_MATCH" }?.enabled ?: false,
+                                onCheckedChange = { }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .clip(ShapeDefaults.Medium)
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Filled.Campaign, contentDescription = "Campaign Icon")
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Promotional notifications",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    text = "Enable notifications to receive promotional messages.",
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Switch(
+                                checked = state.notificationPreferences.find { it.category == "PROMOTIONAL" }?.enabled ?: false,
+                                onCheckedChange = {
+
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Text(
+                            text = "Sessions",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        repeat(state.sessions.size) { i ->
+
+                            val session = state.sessions[i]
+                            val isCurrentSession = session.sessionId == state.currentSessionId
+
+                            SessionItem(
+                                session = session,
+                                onSessionDelete = {
+                                    if(isCurrentSession){
+                                        viewModel.logout()
+                                    }
+                                    else{
+                                        viewModel.deleteSession(session.sessionId)
+                                    }
+                                },
+                                isCurrentSession = isCurrentSession
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
             }
-        }
 
+        }
 
         if(showLogoutAlert){
             AlertDialog(

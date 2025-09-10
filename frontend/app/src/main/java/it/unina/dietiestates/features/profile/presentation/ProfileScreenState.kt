@@ -8,5 +8,6 @@ data class ProfileScreenState(
     val user: User? = null,
     val sessions: List<Session> = emptyList(),
     val currentSessionId: Int? = null,
-    val notificationPreferences: List<NotificationPreferences> = emptyList()
+    val notificationPreferences: List<NotificationPreferences> = emptyList(),
+    val isLoading: Boolean = true
 )

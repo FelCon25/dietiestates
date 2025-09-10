@@ -7,13 +7,13 @@ import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
     primary = Green80,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = Color.White
+    secondary = Green80,
+    tertiary = Green80,
+    background = Color.White,
+    surface = Green10,
+    surfaceContainer = Green10
 
     /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,

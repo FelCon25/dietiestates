@@ -4,7 +4,6 @@ import android.net.Uri
 import it.unina.dietiestates.core.data.FileReader
 import it.unina.dietiestates.core.data.mappers.toUser
 import it.unina.dietiestates.core.domain.DataError
-import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.core.domain.map

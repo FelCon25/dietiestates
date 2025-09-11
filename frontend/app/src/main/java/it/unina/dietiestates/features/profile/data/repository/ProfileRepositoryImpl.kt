@@ -4,6 +4,7 @@ import android.net.Uri
 import it.unina.dietiestates.core.data.FileReader
 import it.unina.dietiestates.core.data.mappers.toUser
 import it.unina.dietiestates.core.domain.DataError
+import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.core.domain.map
@@ -13,6 +14,8 @@ import it.unina.dietiestates.features.profile.data.remote.RemoteProfileDataSourc
 import it.unina.dietiestates.features.profile.domain.NotificationPreferences
 import it.unina.dietiestates.features.profile.domain.ProfileRepository
 import it.unina.dietiestates.features.profile.domain.Session
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class ProfileRepositoryImpl(
     private val remoteProfileDataSource: RemoteProfileDataSource,
@@ -41,6 +44,27 @@ class ProfileRepositoryImpl(
     override suspend fun getNotificationPreferences(): Result<List<NotificationPreferences>, DataError.Remote> {
         return remoteProfileDataSource.getNotificationPreferences().map {
             it.map { it.toNotificationPreferences() }
+        }
+    }
+
+    override suspend fun setPropertyNotificationStatus(enabled: Boolean): Flow<EmptyResult<DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remoteProfileDataSource.setPropertyNotificationStatus(enabled))
+
+
+            emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun setPromotionalNotificationStatus(enabled: Boolean): Flow<EmptyResult<DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remoteProfileDataSource.setPromotionalNotificationStatus(enabled))
+
+            emit(Result.IsLoading(false))
         }
     }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get, Delete, Param } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get, Delete, Param, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 import { Request, Response } from 'express';
@@ -63,6 +63,9 @@ export class AuthController {
     @Post('password/forgot')
     @HttpCode(HttpStatus.OK)
     async sendPasswordReset(@Body('email') email: string) {
+        if(!email) {
+            throw new BadRequestException('Email is required');
+        }
         await this.authService.sendPasswordReset(email);
         return { message: 'Password reset email sent' };
     }

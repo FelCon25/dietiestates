@@ -1,6 +1,5 @@
 package it.unina.dietiestates.features.property.presentation.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import it.unina.dietiestates.app.Route
 import org.koin.androidx.compose.koinViewModel
 
@@ -37,7 +35,7 @@ fun HomeScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(Color.Gray)
+                //.background(Color.Gray)
         ) {
 
         }

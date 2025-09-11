@@ -30,13 +30,17 @@ import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +63,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import it.unina.dietiestates.BuildConfig
+import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
+import it.unina.dietiestates.features.profile.domain.NotificationType
 import it.unina.dietiestates.features.profile.presentation._components.SessionItem
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +79,11 @@ fun ProfileScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     var showLogoutAlert by remember { mutableStateOf(false) }
+    var showDeleteSessionAlert by remember { mutableStateOf(false) }
+    var showPasswordResetAlert by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -80,6 +93,36 @@ fun ProfileScreen(
             }
         }
     )
+
+    ObserveAsEvents(viewModel.eventsChannelFlow) { event ->
+        when(event){
+            is ProfileScreenEvent.OnLogoutFailed -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(message = event.message)
+                }
+            }
+
+            is ProfileScreenEvent.OnSendPasswordResetFailed -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(message = event.message)
+                }
+            }
+
+            is ProfileScreenEvent.OnChangingNotificationStatusFailed -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(message = event.message)
+                }
+            }
+
+            is ProfileScreenEvent.OnDeletingSessionFailed -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(message = event.message)
+                }
+            }
+
+            else -> {}
+        }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -109,6 +152,9 @@ fun ProfileScreen(
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
 
@@ -192,8 +238,27 @@ fun ProfileScreen(
                             modifier = Modifier.height(32.dp)
                         )
 
+                        if(user.provider == "local"){
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                                shape = ShapeDefaults.Medium,
+                                onClick = {
+                                    showPasswordResetAlert = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Change Password")
+                            }
+                        }
+
+                        Spacer(
+                            modifier = Modifier.height(32.dp)
+                        )
+
                         Text(
-                            text = "Info",
+                            text = "Personal information",
                             color = MaterialTheme.colorScheme.primary
                         )
 
@@ -225,78 +290,82 @@ fun ProfileScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(32.dp))
+                        if(user.role == "USER"){
 
-                        Text(
-                            text = "Notifications",
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                            Spacer(modifier = Modifier.height(32.dp))
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .clip(ShapeDefaults.Medium)
-                                .padding(vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Default.House, contentDescription = "House icon")
-
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp)
-                            ) {
-                                Text(
-                                    text = "New property notifications",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 16.sp
-                                )
-                                Text(
-                                    text = "Enable notifications about properties that may interest you.",
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            Switch(
-                                checked = state.notificationPreferences.find { it.category == "NEW_PROPERTY_MATCH" }?.enabled ?: false,
-                                onCheckedChange = { }
+                            Text(
+                                text = "Notifications",
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        }
 
-                        Row(
-                            modifier = Modifier
-                                .clip(ShapeDefaults.Medium)
-                                .padding(vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Filled.Campaign, contentDescription = "Campaign Icon")
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                            Column(
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp)
+                                    .clip(ShapeDefaults.Medium)
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Promotional notifications",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 16.sp
-                                )
-                                Text(
-                                    text = "Enable notifications to receive promotional messages.",
-                                    fontSize = 12.sp
-                                )
-                            }
+                                Icon(imageVector = Icons.Default.House, contentDescription = "House icon")
 
-                            Switch(
-                                checked = state.notificationPreferences.find { it.category == "PROMOTIONAL" }?.enabled ?: false,
-                                onCheckedChange = {
-
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "New property notifications",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        text = "Enable notifications about properties that may interest you.",
+                                        fontSize = 12.sp
+                                    )
                                 }
-                            )
+
+                                Switch(
+                                    enabled = !state.isPropertyNotificationStatusChanging,
+                                    checked = state.notificationPreferences.find { it.category == NotificationType.NEW_PROPERTY_MATCH }?.enabled ?: false,
+                                    onCheckedChange = viewModel::setPropertyNotificationStatus
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .clip(ShapeDefaults.Medium)
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = Icons.Filled.Campaign, contentDescription = "Campaign Icon")
+
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Promotional notifications",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        text = "Enable notifications to receive promotional messages.",
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                Switch(
+                                    enabled = !state.isPromotionalNotificationStatusChanging,
+                                    checked = state.notificationPreferences.find { it.category == NotificationType.PROMOTIONAL }?.enabled ?: false,
+                                    onCheckedChange = viewModel::setPromotionalNotificationStatus
+                                )
+                            }
                         }
+
 
                         Spacer(modifier = Modifier.height(32.dp))
 
@@ -316,10 +385,11 @@ fun ProfileScreen(
                                 session = session,
                                 onSessionDelete = {
                                     if(isCurrentSession){
-                                        viewModel.logout()
+                                        showLogoutAlert = true
                                     }
                                     else{
-                                        viewModel.deleteSession(session.sessionId)
+                                        viewModel.onEvent(ProfileScreenEvent.OnDeletingSessionRequested(session.sessionId))
+                                        showDeleteSessionAlert = true
                                     }
                                 },
                                 isCurrentSession = isCurrentSession
@@ -343,7 +413,10 @@ fun ProfileScreen(
                 },
                 confirmButton = {
                     TextButton (
-                        onClick = viewModel::logout,
+                        onClick = {
+                            viewModel.logout()
+                            showLogoutAlert = false
+                        },
                     ) {
                         Text("Confirm")
                     }
@@ -359,6 +432,74 @@ fun ProfileScreen(
                 },
                 onDismissRequest = {
                     showLogoutAlert = false
+                }
+            )
+        }
+
+        if(showDeleteSessionAlert){
+            AlertDialog(
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete this session?",
+                        fontSize = 16.sp
+                    )
+                },
+                confirmButton = {
+                    TextButton (
+                        onClick = {
+                            viewModel.onEvent(ProfileScreenEvent.OnDeletingSessionConfirmed)
+                            showDeleteSessionAlert = false
+                        },
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton (
+                        onClick = {
+                            viewModel.onEvent(ProfileScreenEvent.OnDeletingSessionCanceled)
+                            showDeleteSessionAlert = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+                onDismissRequest = {
+                    viewModel.onEvent(ProfileScreenEvent.OnDeletingSessionCanceled)
+                    showDeleteSessionAlert = false
+                }
+            )
+        }
+
+        if(showPasswordResetAlert){
+            AlertDialog(
+                text = {
+                    Text(
+                        text = "Are you sure you want to send a password reset email?",
+                        fontSize = 16.sp
+                    )
+                },
+                confirmButton = {
+                    TextButton (
+                        onClick = {
+                            viewModel.sendPasswordReset()
+                            showPasswordResetAlert = false
+                        },
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton (
+                        onClick = {
+                            showPasswordResetAlert = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+                onDismissRequest = {
+                    showPasswordResetAlert = false
                 }
             )
         }

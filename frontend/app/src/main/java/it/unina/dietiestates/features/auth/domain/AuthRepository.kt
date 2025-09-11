@@ -14,6 +14,8 @@ interface AuthRepository {
 
     suspend fun register(email: String, firstName: String, lastName: String, password: String): Flow<Result<User, DataError.Remote>>
 
+    suspend fun sendPasswordReset(email: String): EmptyResult<DataError.Remote>
+
     suspend fun getMe(): Flow<Result<User, DataError.Remote>>
 
     suspend fun logout(): EmptyResult<DataError.Remote>

@@ -4,13 +4,18 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.contentType
 import it.unina.dietiestates.BuildConfig.BASE_URL
 import it.unina.dietiestates.core.data.dto.UserDto
 import it.unina.dietiestates.core.data.safeCall
 import it.unina.dietiestates.core.domain.DataError
+import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.profile.data.dto.NotificationPreferencesDto
 import it.unina.dietiestates.features.profile.data.dto.ProfilePictureDto
@@ -55,6 +60,32 @@ class RemoteProfileDataSourceImpl(
     override suspend fun getNotificationPreferences(): Result<List<NotificationPreferencesDto>, DataError.Remote> {
         return safeCall<List<NotificationPreferencesDto>> {
             httpClient.get(urlString = "$BASE_URL/notification-preferences")
+        }
+    }
+
+    override suspend fun setPropertyNotificationStatus(enabled: Boolean): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post(urlString = "$BASE_URL/notification-preferences/new-property-match"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "enabled" to enabled
+                    )
+                )
+            }
+        }
+    }
+
+    override suspend fun setPromotionalNotificationStatus(enabled: Boolean): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post(urlString = "$BASE_URL/notification-preferences/promotional"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "enabled" to enabled
+                    )
+                )
+            }
         }
     }
 }

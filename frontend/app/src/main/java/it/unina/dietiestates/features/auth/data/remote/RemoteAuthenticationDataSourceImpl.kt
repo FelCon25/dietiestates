@@ -70,6 +70,19 @@ class RemoteAuthenticationDataSourceImpl(
         }
     }
 
+    override suspend fun sendPasswordReset(email: String): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post("$BASE_URL/auth/password/forgot"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "email" to email
+                    )
+                )
+            }
+        }
+    }
+
     override suspend fun getMe(): Result<UserDto, DataError.Remote> {
         return safeCall<UserDto> {
             httpClient.get("$BASE_URL/users/me")

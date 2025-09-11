@@ -2,6 +2,7 @@ package it.unina.dietiestates.features.profile.data.remote
 
 import it.unina.dietiestates.core.data.dto.UserDto
 import it.unina.dietiestates.core.domain.DataError
+import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.profile.data.dto.NotificationPreferencesDto
 import it.unina.dietiestates.features.profile.data.dto.ProfilePictureDto
@@ -16,4 +17,8 @@ interface RemoteProfileDataSource {
     suspend fun changeProfilePic(imageBytes: ByteArray, fileName: String, imageExt: String): Result<ProfilePictureDto, DataError.Remote>
 
     suspend fun getNotificationPreferences(): Result<List<NotificationPreferencesDto>, DataError.Remote>
+
+    suspend fun setPropertyNotificationStatus(enabled: Boolean): EmptyResult<DataError.Remote>
+
+    suspend fun setPromotionalNotificationStatus(enabled: Boolean): EmptyResult<DataError.Remote>
 }

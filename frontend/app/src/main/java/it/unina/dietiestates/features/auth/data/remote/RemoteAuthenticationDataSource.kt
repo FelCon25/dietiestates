@@ -14,6 +14,8 @@ interface RemoteAuthenticationDataSource {
 
     suspend fun register(email: String, firstName: String, lastName: String, password: String): ResultWithTokens<UserDto, DataError.Remote>
 
+    suspend fun sendPasswordReset(email: String): EmptyResult<DataError.Remote>
+
     suspend fun getMe(): Result<UserDto, DataError.Remote>
 
     suspend fun logout(): EmptyResult<DataError.Remote>

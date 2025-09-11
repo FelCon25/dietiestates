@@ -13,7 +13,8 @@ fun UserDto.toUser() =
         profilePic = profilePic,
         role = role,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        provider = provider
     )
 
 fun User.toUserDto() =
@@ -26,5 +27,6 @@ fun User.toUserDto() =
         profilePic = profilePic,
         role = role,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        provider = provider
     )

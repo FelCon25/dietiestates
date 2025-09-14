@@ -22,10 +22,10 @@ export class AgencyAdminController {
     }
 
     @Get('agents')
-    @Roles(Role.ADMIN_AGENCY)
+    @Roles(Role.ADMIN_AGENCY, Role.ASSISTANT)
     async getAgents(@Req() req: Request) {
         const user = req.user as AuthUser;
-        return this.agencyAdminService.getAgents(user.userId);
+        return this.agencyAdminService.getAgents(user.userId, user.role);
     }
 
     @Post('assistant')
@@ -39,6 +39,6 @@ export class AgencyAdminController {
     @Roles(Role.ADMIN_AGENCY, Role.ASSISTANT)
     async createAgent(@Req() req: Request, @Body() dto: CreateAgentDto) {
         const user = req.user as AuthUser;
-        return this.agencyAdminService.createAgent(user.userId, dto);
+        return this.agencyAdminService.createAgent(user.userId, user.role, dto);
     }
 }

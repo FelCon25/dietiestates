@@ -36,22 +36,48 @@ export class AgencyAdminService {
     }
 
 
-    async getAgents(adminUserId: number) {
-        const admin = await this.prisma.agencyAdmin.findUnique({
-            where: { userId: adminUserId },
-            include: { agency: {
-                select: { agencyId: true}
-            } }
-        });
-        if (!admin) {
-            throw new NotFoundException('Admin not found');
+    async getAgents(adminUserId: number, role: string) {
+        let agency = null;
+
+        if(role == Role.ADMIN_AGENCY){
+            const admin = await this.prisma.agencyAdmin.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: {
+                    select: { agencyId: true}
+                } }
+            });
+
+            if (!admin) {
+                throw new NotFoundException('Admin not found');
+            }
+            if (!admin.agency) {
+                throw new BadRequestException('Admin does not have an agency');
+            }
+            agency = admin.agency;
         }
-        if (!admin.agency) {
-            throw new BadRequestException('Admin does not have an agency');
+        else if(role == Role.ASSISTANT) {
+            const assistant = await this.prisma.assistant.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: {
+                    select: { agencyId: true}
+                } }
+            });
+
+            if (!assistant) {
+                throw new NotFoundException('Assistant not found');
+            }
+            if (!assistant.agency) {
+                throw new BadRequestException('Assistant does not have an agency');
+            }
+            agency = assistant.agency;
         }
 
+        if(!agency) {
+            throw new NotFoundException('No agency found');
+        }
+        
         const agents = await this.prisma.agent.findMany({
-            where: { agencyId: admin.agency.agencyId },
+            where: { agencyId: agency.agencyId },
             include: { 
                 user: { omit: { password: true} }
             }
@@ -112,16 +138,38 @@ export class AgencyAdminService {
         return { user: userWithoutPassword, assistant };
     }
 
-    async createAgent(adminUserId: number, dto: CreateAgentDto) {
-        const admin = await this.prisma.agencyAdmin.findUnique({
-            where: { userId: adminUserId },
-            include: { agency: true },
-        });
-        if (!admin) {
-            throw new NotFoundException('Admin not found');
+    async createAgent(adminUserId: number, role: string, dto: CreateAgentDto) {
+        let agency = null;
+
+        if(role == Role.ADMIN_AGENCY) {
+            const admin = await this.prisma.agencyAdmin.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: true },
+            });
+            if (!admin) {
+                throw new NotFoundException('Admin not found');
+            }
+            if (!admin.agency) {
+                throw new BadRequestException('Admin does not have an agency');
+            }
+            agency = admin.agency;
         }
-        if (!admin.agency) {
-            throw new BadRequestException('Admin does not have an agency');
+        else if(role == Role.ASSISTANT) {
+            const assistant = await this.prisma.assistant.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: true },
+            });
+            if (!assistant) {
+                throw new NotFoundException('Assistant not found');
+            }
+            if (!assistant.agency) {
+                throw new BadRequestException('Assistant does not have an agency');
+            }
+            agency = assistant.agency;
+        }
+        
+        if(!agency) {
+            throw new NotFoundException('No agency found');
         }
 
         const existingUser = await this.prisma.user.findUnique({
@@ -146,7 +194,7 @@ export class AgencyAdminService {
         const agent = await this.prisma.agent.create({
             data: {
                 userId: agentUser.userId,
-                agencyId: admin.agency.agencyId,
+                agencyId: agency.agencyId,
             },
         });
 

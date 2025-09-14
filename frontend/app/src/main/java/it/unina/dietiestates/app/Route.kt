@@ -39,6 +39,10 @@ sealed interface Route {
     //Assistant
     @Serializable
     data object AssistantGraph: Route
+    @Serializable
+    data object Assistant: Route
+    @Serializable
+    data object AssistantAddAgent: Route
 
 
     //Agent

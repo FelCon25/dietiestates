@@ -6,13 +6,14 @@ import it.unina.dietiestates.core.data.HttpClientFactory
 import it.unina.dietiestates.core.data.googleAuth.GoogleAuthUtil
 import it.unina.dietiestates.core.data.tokens.TokenManager
 import it.unina.dietiestates.core.presentation.MainScreenViewModel
-import it.unina.dietiestates.features.admin.data.remote.RemoteAdminDataSource
-import it.unina.dietiestates.features.admin.data.remote.RemoteAdminDataSourceImpl
-import it.unina.dietiestates.features.admin.data.repository.AdminRepositoryImpl
-import it.unina.dietiestates.features.admin.domain.AdminRepository
-import it.unina.dietiestates.features.admin.presentation.addAgent.AdminAddAgentScreenViewModel
-import it.unina.dietiestates.features.admin.presentation.addAssistant.AdminAddAssistantScreenViewModel
-import it.unina.dietiestates.features.admin.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.data.remote.RemoteAgencyDataSource
+import it.unina.dietiestates.features.agency.data.remote.RemoteAgencyDataSourceImpl
+import it.unina.dietiestates.features.agency.data.repository.AgencyRepositoryImpl
+import it.unina.dietiestates.features.agency.domain.AgencyRepository
+import it.unina.dietiestates.features.agency.presentation.addAgent.AddAgentScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.addAssistant.AddAssistantScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreenViewModel
 import it.unina.dietiestates.features.auth.data.remote.RemoteAuthenticationDataSource
 import it.unina.dietiestates.features.auth.data.remote.RemoteAuthenticationDataSourceImpl
 import it.unina.dietiestates.features.auth.data.repository.AuthRepositoryImpl
@@ -45,8 +46,8 @@ val mainModule = module {
     singleOf(::RemoteProfileDataSourceImpl).bind<RemoteProfileDataSource>()
     singleOf(::ProfileRepositoryImpl).bind<ProfileRepository>()
 
-    singleOf(::RemoteAdminDataSourceImpl).bind<RemoteAdminDataSource>()
-    singleOf(::AdminRepositoryImpl).bind<AdminRepository>()
+    singleOf(::RemoteAgencyDataSourceImpl).bind<RemoteAgencyDataSource>()
+    singleOf(::AgencyRepositoryImpl).bind<AgencyRepository>()
 
     viewModelOf(::MainScreenViewModel)
     viewModelOf(::SignInScreenViewModel)
@@ -57,6 +58,8 @@ val mainModule = module {
     viewModelOf(::ProfileScreenViewModel)
 
     viewModelOf(::AdminScreenViewModel)
-    viewModelOf(::AdminAddAssistantScreenViewModel)
-    viewModelOf(::AdminAddAgentScreenViewModel)
+    viewModelOf(::AddAssistantScreenViewModel)
+    viewModelOf(::AddAgentScreenViewModel)
+
+    viewModelOf(::AssistantScreenViewModel)
 }

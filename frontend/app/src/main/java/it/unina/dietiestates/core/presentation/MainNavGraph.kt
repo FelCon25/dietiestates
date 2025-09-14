@@ -17,10 +17,12 @@ import it.unina.dietiestates.app.BottomBarScreen
 import it.unina.dietiestates.app.Route
 import it.unina.dietiestates.core.presentation._compontents.BottomNavigationBar
 import it.unina.dietiestates.core.presentation._compontents.TopBar
-import it.unina.dietiestates.features.admin.presentation.addAgent.AdminAddAgentScreen
-import it.unina.dietiestates.features.admin.presentation.addAssistant.AdminAddAssistantScreen
-import it.unina.dietiestates.features.admin.presentation.adminScreen.AdminScreen
-import it.unina.dietiestates.features.admin.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.addAgent.AddAgentScreen
+import it.unina.dietiestates.features.agency.presentation.addAssistant.AdminAddAssistantScreen
+import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreen
+import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreen
+import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreenViewModel
 import it.unina.dietiestates.features.auth.presentation.authGraph
 import it.unina.dietiestates.features.profile.presentation.ProfileScreen
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreen
@@ -73,6 +75,20 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
             )
 
             adminScreens(
+                navController = navController,
+                topBar = {
+                    state.user?.let { user ->
+                        TopBar(
+                            user = user,
+                            onEditProfileNavigation = {
+                                navController.navigate(Route.Profile)
+                            }
+                        )
+                    }
+                }
+            )
+
+            assistantScreens(
                 navController = navController,
                 topBar = {
                     state.user?.let { user ->
@@ -142,10 +158,10 @@ private fun NavGraphBuilder.adminScreens(
             AdminScreen(
                 viewModel = viewModel,
                 topBar = topBar,
-                onAddNewAssistant = {
+                onAddNewAssistantNavigation = {
                     navController.navigate(Route.AdminAddAssistant)
                 },
-                onAddNewAgent = {
+                onAddNewAgentNavigation = {
                     navController.navigate(Route.AdminAddAgent)
                 }
             )
@@ -168,7 +184,7 @@ private fun NavGraphBuilder.adminScreens(
         composable<Route.AdminAddAgent> {
             val viewModel = it.sharedKoinViewModel<AdminScreenViewModel>(navController = navController)
 
-            AdminAddAgentScreen(
+            AddAgentScreen(
                 onBackNavigation = {
                     navController.navigateUp()
                 },
@@ -178,6 +194,39 @@ private fun NavGraphBuilder.adminScreens(
                 }
             )
         }
+    }
+}
+
+private fun NavGraphBuilder.assistantScreens(
+    navController: NavController,
+    topBar: @Composable () -> Unit
+){
+    navigation<Route.AssistantGraph>(
+        startDestination = Route.Assistant
+    ){
+        composable<Route.Assistant>{
+            AssistantScreen(
+                topBar = topBar,
+                onAddNewAgentNavigation = {
+                    navController.navigate(Route.AssistantAddAgent)
+                }
+            )
+        }
+
+        composable<Route.AssistantAddAgent> {
+            val viewModel = it.sharedKoinViewModel<AssistantScreenViewModel>(navController = navController)
+
+            AddAgentScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                },
+                onNewAgentAdded = { agent ->
+                    viewModel.onNewAgentAdded(agent)
+                    navController.navigateUp()
+                }
+            )
+        }
+
     }
 }
 

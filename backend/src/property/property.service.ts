@@ -157,7 +157,7 @@ export class PropertyService {
 
     const mappedItems = properties.map((item) => ({
       ...item,
-      images: item.images.map((img) => img.url),
+      images: item.images.length > 0 ? item.images.map((img) => img.url) : [],
     }));
 
     return mappedItems;

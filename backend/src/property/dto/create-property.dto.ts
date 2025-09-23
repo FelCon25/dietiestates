@@ -1,5 +1,5 @@
 import { InsertionType, PropertyCondition, PropertyType } from '@prisma/client';
-import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsEnum, IsOptional, IsArray } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class CreatePropertyDto {
@@ -35,7 +35,7 @@ export class CreatePropertyDto {
       return value;
     })
     @IsBoolean()
-    elevator: boolean;
+    elevator: boolean | string;
 
     @IsNotEmpty()
     @IsString()
@@ -48,7 +48,7 @@ export class CreatePropertyDto {
       return value;
     })
     @IsBoolean()
-    concierge: boolean;
+    concierge: boolean | string;
 
     @IsNotEmpty()
     @Transform(({ value }) => {
@@ -57,7 +57,7 @@ export class CreatePropertyDto {
       return value;
     })
     @IsBoolean()
-    airConditioning: boolean;
+    airConditioning: boolean | string;
 
     @IsOptional()
     @Transform(({ value }) => {
@@ -66,7 +66,7 @@ export class CreatePropertyDto {
       return value;
     })
     @IsBoolean()
-    furnished?: boolean;
+    furnished?: boolean | string;
 
     @IsNotEmpty()
     @IsEnum(PropertyType)

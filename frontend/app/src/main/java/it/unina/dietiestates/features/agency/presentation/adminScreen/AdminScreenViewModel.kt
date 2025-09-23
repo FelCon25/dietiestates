@@ -43,7 +43,7 @@ class AdminScreenViewModel(
                 }
             }
 
-            onError {
+            onError { error ->
 
             }
         }

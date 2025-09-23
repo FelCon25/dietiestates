@@ -15,7 +15,7 @@ interface ProfileRepository {
 
     suspend fun changeProfilePic(image: Uri): Result<String, DataError.Remote>
 
-    suspend fun getNotificationPreferences(): Result<List<NotificationPreferences>, DataError.Remote>
+    suspend fun getNotificationPreferences(): Result<List<NotificationCategory>, DataError.Remote>
 
     suspend fun setPropertyNotificationStatus(enabled: Boolean): Flow<EmptyResult<DataError.Remote>>
 

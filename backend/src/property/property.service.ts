@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { SearchPropertyDto } from './dto/search-property.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, PropertyImage } from '@prisma/client';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -114,7 +114,7 @@ export class PropertyService {
 
 
   private async getPropertyWithDetails(tx: any, propertyId: number) {
-    return tx.property.findUnique({
+    const property = await tx.property.findUnique({
       where: { propertyId },
       include: {
         images: {
@@ -123,7 +123,46 @@ export class PropertyService {
         agency: true,
       },
     });
+
+    const mapped = {
+      ...property,
+      images: property.images.map((img: PropertyImage) => img.url)
+    };
+
+
+    return mapped;
   }
+
+  async getAgentProperties(agentUserId: number) {
+    const agent = await this.prisma.agent.findUnique({
+      where: { userId: agentUserId },
+      include: { agency: true },
+    });
+
+    if (!agent?.agency) {
+      throw new NotFoundException('Agent with agency not found. Only agents can have properties.');
+    }
+
+    const properties = await this.prisma.property.findMany({
+      where: { agentId: agent.userId },
+      include: {
+        images: {
+          where: { order: 0 },
+          take: 1,
+        },
+        agency: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const mappedItems = properties.map((item) => ({
+      ...item,
+      images: item.images.map((img) => img.url),
+    }));
+
+    return mappedItems;
+  }
+    
 
   async getProperties(page: number = 1, pageSize: number = 10) {
     const skip = (page - 1) * pageSize;

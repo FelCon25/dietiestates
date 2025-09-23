@@ -20,3 +20,24 @@ data class Agency(
     val updatedAt: String,
     val agencyAdminId: Int
 )
+
+fun getEmptyAgency() = Agency(
+    agencyId = 0,
+    businessName = "",
+    legalName = "",
+    vatNumber = "",
+    email = "",
+    pec = "",
+    phone = "",
+    website = "",
+    address = "",
+    city = "",
+    postalCode = "",
+    province = "",
+    country = "",
+    latitude = "",
+    longitude = "",
+    createdAt = "",
+    updatedAt = "",
+    agencyAdminId = 0
+)

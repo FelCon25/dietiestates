@@ -45,6 +45,17 @@ export class PropertyController {
     return this.propertyService.createPropertyWithImages(user.userId, dto, files);
   }
 
+  
+  @Get('by-agent')
+  @Roles(Role.AGENT)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async getAgentProperties(
+    @Req() req: Request
+  ){
+     const user = req.user as AuthUser;
+    return this.propertyService.getAgentProperties(user.userId);
+  }
+
   @Get()
   async getPropertiesPaginated(
     @Query('page') page: string,

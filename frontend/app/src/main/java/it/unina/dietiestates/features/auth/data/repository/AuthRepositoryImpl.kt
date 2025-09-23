@@ -103,4 +103,8 @@ class AuthRepositoryImpl(
         if(tokens.refresh != null)
             tokenManager.saveTokens(tokens.access, tokens.refresh)
     }
+
+    override suspend fun sendPushNotificationToken(token: String): EmptyResult<DataError.Remote> {
+        return remoteAuthenticationDataSource.sendPushNotificationToken(token)
+    }
 }

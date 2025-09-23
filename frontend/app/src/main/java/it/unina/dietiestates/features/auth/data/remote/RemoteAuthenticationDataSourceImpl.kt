@@ -102,4 +102,17 @@ class RemoteAuthenticationDataSourceImpl(
             httpClient.delete(urlString = "$BASE_URL/auth/sessions/$sessionId")
         }
     }
+
+    override suspend fun sendPushNotificationToken(token: String): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post(urlString = "$BASE_URL/auth/sessions/notification-token") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "notificationToken" to token
+                    )
+                )
+            }
+        }
+    }
 }

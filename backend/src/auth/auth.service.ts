@@ -93,20 +93,6 @@ export class AuthService {
             });
         }
 
-        // Crate default notification preferences for regular users
-        if(newUser.role === Role.USER) {
-            const notificationTypes = await this.prisma.notificationType.findMany();
-            if (notificationTypes.length > 0) {
-                await this.prisma.userNotificationPreference.createMany({
-                    data: notificationTypes.map(nt => ({
-                        userId: newUser.userId,
-                        notificationTypeId: nt.notificationTypeId,
-                        enabled: true
-                    }))
-                });
-            }
-        }
-
         // Create agency admin record if user is ADMIN_AGENCY
         if (dto.role === RegistrationRole.ADMIN_AGENCY) {
             // Check if agency admin record already exists
@@ -184,7 +170,7 @@ export class AuthService {
                 }
             });
 
-            if (!user) 
+            if (!user)
                 throw new InternalServerErrorException('User registration failed');
         }
 
@@ -412,6 +398,13 @@ export class AuthService {
         return this.prisma.user.update({
             where: { userId },
             data: { profilePic }
+        });
+    }
+
+    async setNotificationToken(sessionId: number, notificationToken: string) {
+        await this.prisma.session.update({
+            where: { sessionId },
+            data: { notificationToken }
         });
     }
 }

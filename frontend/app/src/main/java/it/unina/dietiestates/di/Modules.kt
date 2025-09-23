@@ -13,6 +13,7 @@ import it.unina.dietiestates.features.agency.domain.AgencyRepository
 import it.unina.dietiestates.features.agency.presentation.addAgent.AddAgentScreenViewModel
 import it.unina.dietiestates.features.agency.presentation.addAssistant.AddAssistantScreenViewModel
 import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.agentScreen.AgentScreenViewModel
 import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreenViewModel
 import it.unina.dietiestates.features.auth.data.remote.RemoteAuthenticationDataSource
 import it.unina.dietiestates.features.auth.data.remote.RemoteAuthenticationDataSourceImpl
@@ -25,6 +26,15 @@ import it.unina.dietiestates.features.profile.data.remote.RemoteProfileDataSourc
 import it.unina.dietiestates.features.profile.data.repository.ProfileRepositoryImpl
 import it.unina.dietiestates.features.profile.domain.ProfileRepository
 import it.unina.dietiestates.features.profile.presentation.ProfileScreenViewModel
+import it.unina.dietiestates.features.property.data.remote.RemoteGeocodeDataSource
+import it.unina.dietiestates.features.property.data.remote.RemoteGeocodeDataSourceImpl
+import it.unina.dietiestates.features.property.data.remote.RemotePropertyDataSource
+import it.unina.dietiestates.features.property.data.remote.RemotePropertyDataSourceImpl
+import it.unina.dietiestates.features.property.data.repository.GeocodeRepositoryImpl
+import it.unina.dietiestates.features.property.data.repository.PropertyRepositoryImpl
+import it.unina.dietiestates.features.property.domain.GeocodeRepository
+import it.unina.dietiestates.features.property.domain.PropertyRepository
+import it.unina.dietiestates.features.property.presentation.addProperty.AddPropertyScreenViewModel
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreenViewModel
 import it.unina.dietiestates.features.property.presentation.home.HomeScreenViewModel
 import it.unina.dietiestates.features.property.presentation.savedSearches.SavedSearchesScreenViewModel
@@ -49,6 +59,12 @@ val mainModule = module {
     singleOf(::RemoteAgencyDataSourceImpl).bind<RemoteAgencyDataSource>()
     singleOf(::AgencyRepositoryImpl).bind<AgencyRepository>()
 
+    singleOf(::RemoteGeocodeDataSourceImpl).bind<RemoteGeocodeDataSource>()
+    singleOf(::GeocodeRepositoryImpl).bind<GeocodeRepository>()
+
+    singleOf(::RemotePropertyDataSourceImpl).bind<RemotePropertyDataSource>()
+    singleOf(::PropertyRepositoryImpl).bind<PropertyRepository>()
+
     viewModelOf(::MainScreenViewModel)
     viewModelOf(::SignInScreenViewModel)
     viewModelOf(::RegisterScreenViewModel)
@@ -62,4 +78,7 @@ val mainModule = module {
     viewModelOf(::AddAgentScreenViewModel)
 
     viewModelOf(::AssistantScreenViewModel)
+
+    viewModelOf(::AgentScreenViewModel)
+    viewModelOf(::AddPropertyScreenViewModel)
 }

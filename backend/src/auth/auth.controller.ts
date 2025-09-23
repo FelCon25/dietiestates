@@ -127,4 +127,14 @@ export class AuthController {
         return { message: 'Session deleted successfully' };
 
     }
+
+    @UseGuards(AccessTokenGuard)
+    @Post('sessions/notification-token')
+    async setNotificationToken(
+        @Body('notificationToken') notificationToken: string,
+        @Req() req: Request
+    ) {
+        const user = req.user as AuthUser;
+        await this.authService.setNotificationToken(user.sessionId, notificationToken);
+    }
 }

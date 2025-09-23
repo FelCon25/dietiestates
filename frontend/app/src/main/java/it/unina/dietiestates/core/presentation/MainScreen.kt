@@ -42,6 +42,8 @@ fun MainScreen(
                     popUpTo(0) { inclusive = true }
                 }
             }
+
+            else -> {}
         }
     }
 

@@ -30,13 +30,12 @@ model User {
   @@map("users")
 }
 
-
-
 model Session {
-  userId    Int
-  userAgent String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  userId            Int
+  userAgent         String
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+  notificationToken String?
   sessionId Int      @id @default(autoincrement())
   user      User     @relation(fields: [userId], references: [userId])
 
@@ -65,8 +64,8 @@ model Agency {
   postalCode    String
   province      String
   country       String
-  latitude      Decimal?
-  longitude     Decimal?
+  latitude      Decimal
+  longitude     Decimal
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   agencyAdminId Int         @unique
@@ -118,7 +117,8 @@ model Property {
   energyClass       String
   concierge         Boolean
   airConditioning   Boolean
-  type              PropertyType
+  insertionType     InsertionType
+  propertyType      PropertyType        
   address           String
   city              String
   postalCode        String
@@ -127,9 +127,8 @@ model Property {
   latitude          Decimal
   longitude         Decimal
   agentId           Int
-  title             String
   furnished         Boolean?
-  propertyCondition String?
+  propertyCondition PropertyCondition?
   createdAt         DateTime        @default(now())
   agency            Agency          @relation(fields: [agencyId], references: [agencyId])
   agent             Agent           @relation(fields: [agentId], references: [userId])
@@ -153,13 +152,14 @@ model SavedSearch {
   maxSurfaceArea    Int?
   minRooms          Int?
   maxRooms          Int?
-  propertyCondition String?
+  propertyCondition PropertyCondition?
   elevator          Boolean?
   airConditioning   Boolean?
   concierge         Boolean?
   energyClass       String?
   furnished         Boolean?
-  type              PropertyType?
+  propertyType      PropertyType?
+  insertionType     InsertionType?
   minPrice          Decimal?
   maxPrice          Decimal?
   name              String
@@ -177,20 +177,12 @@ model PropertyImage {
   @@map("property_images")
 }
 
-model NotificationType {
-  notificationTypeId Int      @id @default(autoincrement())
-  category           NotificationCategory @unique
-  users              UserNotificationPreference[]
-}
-
 model UserNotificationPreference {
   userId             Int
-  notificationTypeId Int
-  enabled            Boolean @default(true)
+  category           NotificationCategory
   user               User             @relation(fields: [userId], references: [userId])
-  notificationType   NotificationType @relation(fields: [notificationTypeId], references: [notificationTypeId])
 
-  @@id([userId, notificationTypeId])
+  @@id([userId, category])
   @@map("user_notification_preferences")
 }
 
@@ -207,11 +199,18 @@ enum PropertyCondition {
   TO_RENOVATE
 }
 
-enum PropertyType {
+enum InsertionType {
   SALE
   RENT
   SHORT_TERM
   VACATION
+}
+
+enum PropertyType {
+  VILLA
+  APARTMENT
+  STUDIO
+  GARAGE
 }
 
 enum NotificationCategory {

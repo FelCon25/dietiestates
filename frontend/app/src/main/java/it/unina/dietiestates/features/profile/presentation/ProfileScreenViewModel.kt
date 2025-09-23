@@ -8,7 +8,7 @@ import it.unina.dietiestates.core.domain.onError
 import it.unina.dietiestates.core.domain.onLoading
 import it.unina.dietiestates.core.domain.onSuccess
 import it.unina.dietiestates.features.auth.domain.AuthRepository
-import it.unina.dietiestates.features.profile.domain.NotificationType
+import it.unina.dietiestates.features.profile.domain.NotificationCategory
 import it.unina.dietiestates.features.profile.domain.ProfileRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -189,12 +189,12 @@ class ProfileScreenViewModel(
 
     fun setPropertyNotificationStatus(enabled: Boolean){
         viewModelScope.launch {
-            updateNotificationPreferencesStatusState(NotificationType.NEW_PROPERTY_MATCH, enabled)
+            updateNotificationPreferencesState(NotificationCategory.NEW_PROPERTY_MATCH, enabled)
 
             repository.setPropertyNotificationStatus(enabled).collect { result ->
                 result.apply {
                     onError {
-                        updateNotificationPreferencesStatusState(NotificationType.NEW_PROPERTY_MATCH, !enabled)
+                        updateNotificationPreferencesState(NotificationCategory.NEW_PROPERTY_MATCH, !enabled)
                         onEvent(ProfileScreenEvent.OnChangingNotificationStatusFailed("There was an error changing the notification status."))
                     }
 
@@ -212,12 +212,12 @@ class ProfileScreenViewModel(
 
     fun setPromotionalNotificationStatus(enabled: Boolean){
         viewModelScope.launch {
-            updateNotificationPreferencesStatusState(NotificationType.PROMOTIONAL, enabled)
+            updateNotificationPreferencesState(NotificationCategory.PROMOTIONAL, enabled)
 
             repository.setPromotionalNotificationStatus(enabled).collect { result ->
                 result.apply {
                     onError {
-                        updateNotificationPreferencesStatusState(NotificationType.PROMOTIONAL, !enabled)
+                        updateNotificationPreferencesState(NotificationCategory.PROMOTIONAL, !enabled)
                         onEvent(ProfileScreenEvent.OnChangingNotificationStatusFailed("There was an error changing the notification status."))
                     }
 
@@ -233,14 +233,14 @@ class ProfileScreenViewModel(
         }
     }
 
-    private fun updateNotificationPreferencesStatusState(type: NotificationType, status: Boolean){
+    private fun updateNotificationPreferencesState(category: NotificationCategory, enabled: Boolean){
         _state.update {
             it.copy(
-                notificationPreferences = it.notificationPreferences.map { notificationPreferences ->
-                    if(notificationPreferences.category == type)
-                        notificationPreferences.copy(enabled = status)
+                notificationPreferences = it.notificationPreferences.toMutableList().apply {
+                    if(enabled)
+                        add(category)
                     else
-                        notificationPreferences
+                        remove(category)
                 }
             )
         }

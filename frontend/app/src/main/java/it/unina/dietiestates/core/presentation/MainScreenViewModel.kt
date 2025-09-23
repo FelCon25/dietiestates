@@ -2,6 +2,7 @@ package it.unina.dietiestates.core.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.messaging.FirebaseMessaging
 import it.unina.dietiestates.app.Route
 import it.unina.dietiestates.core.data.tokens.TokenManager
 import it.unina.dietiestates.core.domain.DataError
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainScreenViewModel(
     val tokenManager: TokenManager,
@@ -61,12 +63,22 @@ class MainScreenViewModel(
                     _eventsChannel.send(MainScreenEvent.OnLogout)
                 }
             }
+
+            is MainScreenEvent.OnSendPushNotificationToken -> {
+                viewModelScope.launch {
+                    val token = FirebaseMessaging.getInstance().token.await()
+                    authRepository.sendPushNotificationToken(token)
+                }
+            }
         }
     }
 
     fun addUserFromAuth(user: User){
         _state.update {
             it.copy(user = user)
+        }
+        if(user.role == "USER"){
+            onEvent(MainScreenEvent.OnSendPushNotificationToken)
         }
     }
 
@@ -83,6 +95,9 @@ class MainScreenViewModel(
                         it.copy(
                             startDestination = getStartDestinationFromRole(user.role)
                         )
+                    }
+                    if(user.role == "USER"){
+                        onEvent(MainScreenEvent.OnSendPushNotificationToken)
                     }
                 }
 

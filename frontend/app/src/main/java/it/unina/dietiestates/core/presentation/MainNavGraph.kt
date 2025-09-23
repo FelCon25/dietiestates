@@ -21,10 +21,13 @@ import it.unina.dietiestates.features.agency.presentation.addAgent.AddAgentScree
 import it.unina.dietiestates.features.agency.presentation.addAssistant.AdminAddAssistantScreen
 import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreen
 import it.unina.dietiestates.features.agency.presentation.adminScreen.AdminScreenViewModel
+import it.unina.dietiestates.features.agency.presentation.agentScreen.AgentScreen
+import it.unina.dietiestates.features.agency.presentation.agentScreen.AgentScreenViewModel
 import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreen
 import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreenViewModel
 import it.unina.dietiestates.features.auth.presentation.authGraph
 import it.unina.dietiestates.features.profile.presentation.ProfileScreen
+import it.unina.dietiestates.features.property.presentation.addProperty.AddPropertyScreen
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreen
 import it.unina.dietiestates.features.property.presentation.home.HomeScreen
 import it.unina.dietiestates.features.property.presentation.savedSearches.SavedSearchesScreen
@@ -89,6 +92,20 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
             )
 
             assistantScreens(
+                navController = navController,
+                topBar = {
+                    state.user?.let { user ->
+                        TopBar(
+                            user = user,
+                            onEditProfileNavigation = {
+                                navController.navigate(Route.Profile)
+                            }
+                        )
+                    }
+                }
+            )
+
+            agentScreens(
                 navController = navController,
                 topBar = {
                     state.user?.let { user ->
@@ -205,7 +222,10 @@ private fun NavGraphBuilder.assistantScreens(
         startDestination = Route.Assistant
     ){
         composable<Route.Assistant>{
+            val viewModel = it.sharedKoinViewModel<AssistantScreenViewModel>(navController = navController)
+
             AssistantScreen(
+                viewModel = viewModel,
                 topBar = topBar,
                 onAddNewAgentNavigation = {
                     navController.navigate(Route.AssistantAddAgent)
@@ -227,6 +247,41 @@ private fun NavGraphBuilder.assistantScreens(
             )
         }
 
+    }
+}
+
+private fun NavGraphBuilder.agentScreens(
+    navController: NavController,
+    topBar: @Composable () -> Unit
+){
+    navigation<Route.AgentGraph>(
+        startDestination = Route.Agent
+    ){
+        composable<Route.Agent>{
+            val viewModel = it.sharedKoinViewModel<AgentScreenViewModel>(navController = navController)
+
+            AgentScreen(
+                viewModel = viewModel,
+                topBar = topBar,
+                onNewPropertyNavigation = {
+                    navController.navigate(Route.AddProperty)
+                }
+            )
+        }
+
+        composable<Route.AddProperty> {
+            val viewModel = it.sharedKoinViewModel<AgentScreenViewModel>(navController = navController)
+
+            AddPropertyScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                },
+                onNewPropertyAdded = { property ->
+                    viewModel.onNewPropertyAdded(property)
+                    navController.navigateUp()
+                }
+            )
+        }
     }
 }
 

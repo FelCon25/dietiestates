@@ -1,31 +1,36 @@
 package it.unina.dietiestates.features.agency.presentation.adminScreen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -38,10 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import it.unina.dietiestates.features.agency.domain.Agent
+import it.unina.dietiestates.features.agency.domain.Assistant
+import it.unina.dietiestates.features.agency.presentation._components.AgencyItem
 import it.unina.dietiestates.features.agency.presentation._components.AgentItem
 import it.unina.dietiestates.features.agency.presentation._components.AssistantItem
 import it.unina.dietiestates.ui.theme.Green80
@@ -58,12 +64,14 @@ fun AdminScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    var isDropdownMenuOpen by remember {  mutableStateOf(false) }
+    var isModalOpen by remember { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(0, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        state = rememberTopAppBarState(),
+    )
 
     val tabs = listOf("Assistants", "Agents")
 
@@ -78,38 +86,10 @@ fun AdminScreen(
                 containerColor = Green80,
                 contentColor = Color.White,
                 onClick = {
-                    isDropdownMenuOpen = !isDropdownMenuOpen
+                    isModalOpen = !isModalOpen
                 }
             ) {
-
-                DropdownMenu(
-                    expanded = isDropdownMenuOpen,
-                    onDismissRequest = {
-                        isDropdownMenuOpen = false
-                    }
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(text = "Add Assistant")
-                        },
-                        onClick = {
-                            isDropdownMenuOpen = false
-                            onAddNewAssistantNavigation()
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = {
-                            Text(text = "Add Agent")
-                        },
-                        onClick = {
-                            isDropdownMenuOpen = false
-                            onAddNewAgentNavigation()
-                        }
-                    )
-                }
-
-                Icon(imageVector = if(isDropdownMenuOpen) Icons.Outlined.Close else Icons.Outlined.Add, contentDescription = "Add or Close icon")
+                Icon(imageVector = if(isModalOpen) Icons.Outlined.Close else Icons.Outlined.Add, contentDescription = "Add or Close icon")
             }
         }
     ) { paddingValues ->
@@ -131,39 +111,22 @@ fun AdminScreen(
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 topBar = {
-                    state.agency?.let { agency ->
-                        TopAppBar(
-                            expandedHeight = 100.dp,
-                            title = {
-                                Column {
-                                    Text(
-                                        text = agency.businessName,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Text(
-                                        text = agency.vatNumber,
-                                        fontSize = 16.sp
-                                    )
-
-                                    Text(
-                                        text = agency.email,
-                                        fontSize = 16.sp
-                                    )
-                                }
-
-                            },
-                            scrollBehavior = scrollBehavior
-                        )
-                    }
+                    CenterAlignedTopAppBar(
+                        expandedHeight = 200.dp,
+                        title = {
+                            state.agency?.let { agency ->
+                                AgencyItem(agency = agency)
+                            }
+                        },
+                        scrollBehavior = scrollBehavior
+                    )
                 }
-            ) { innerPadding ->
-
+            ) { paddingValues ->
                 Column(
                     modifier = Modifier
-                        .padding(innerPadding)
+                        .padding(paddingValues)
                         .fillMaxSize()
+                        .fillMaxHeight(1f)
                 ) {
                     TabRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -189,62 +152,109 @@ fun AdminScreen(
 
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.background)
+                            .weight(1f)
                     ) { index ->
 
                         when(index){
-                            0 -> {
-                                if(state.assistants.isEmpty()){
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ){
-                                        Text("No assistants have been added")
-                                    }
-                                }
-                                else{
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                        contentPadding = PaddingValues(16.dp)
-                                    ) {
-                                        items(state.assistants.size){ i ->
-                                            val assistant = state.assistants[i]
-
-                                            AssistantItem(assistant)
-                                        }
-                                    }
-                                }
-                            }
-
-                            1 -> {
-                                if(state.agents.isEmpty()){
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ){
-                                        Text("No agents have been added")
-                                    }
-                                }
-                                else{
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                        contentPadding = PaddingValues(16.dp)
-                                    ) {
-                                        items(state.agents.size){ i ->
-                                            val agent = state.agents[i]
-
-                                            AgentItem(agent = agent)
-                                        }
-                                    }
-                                }
-                            }
+                            0 -> AssistantsPage(state.assistants)
+                            1 -> AgentsPage(state.agents)
                         }
                     }
                 }
             }
         }
+    }
 
+    if(isModalOpen){
+        ModalBottomSheet(
+            onDismissRequest = {
+                isModalOpen = false
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = {
+                    isModalOpen = false
+                    onAddNewAssistantNavigation()
+                },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+            ) {
+                Text(
+                    modifier = Modifier.padding(16.dp),
+                    text = "Add Assistant"
+                )
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = {
+                    isModalOpen = false
+                    onAddNewAgentNavigation()
+                },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+            ) {
+                Text(
+                    modifier = Modifier.padding(16.dp),
+                    text = "Add Agent"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssistantsPage(
+    assistants: List<Assistant>
+){
+    if(assistants.isEmpty()){
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ){
+            Text("No assistants have been added.")
+        }
+    }
+    else{
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(assistants){ assistant ->
+                AssistantItem(assistant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentsPage(
+    agents: List<Agent>
+){
+    if(agents.isEmpty()){
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ){
+            Text("No agents have been added.")
+        }
+    }
+    else{
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(agents){ agent ->
+                AgentItem(agent)
+            }
+        }
     }
 }

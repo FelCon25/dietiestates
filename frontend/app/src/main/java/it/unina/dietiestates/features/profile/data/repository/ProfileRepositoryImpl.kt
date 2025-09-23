@@ -8,10 +8,9 @@ import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.core.domain.map
-import it.unina.dietiestates.features.profile.data.mappers.toNotificationPreferences
 import it.unina.dietiestates.features.profile.data.mappers.toSession
 import it.unina.dietiestates.features.profile.data.remote.RemoteProfileDataSource
-import it.unina.dietiestates.features.profile.domain.NotificationPreferences
+import it.unina.dietiestates.features.profile.domain.NotificationCategory
 import it.unina.dietiestates.features.profile.domain.ProfileRepository
 import it.unina.dietiestates.features.profile.domain.Session
 import kotlinx.coroutines.flow.Flow
@@ -41,9 +40,16 @@ class ProfileRepositoryImpl(
         return remoteProfileDataSource.changeProfilePic(imageBytes = fileInfo.bytes, fileName = fileInfo.name, imageExt = fileInfo.mimeType).map { it.profilePic }
     }
 
-    override suspend fun getNotificationPreferences(): Result<List<NotificationPreferences>, DataError.Remote> {
+    override suspend fun getNotificationPreferences(): Result<List<NotificationCategory>, DataError.Remote> {
         return remoteProfileDataSource.getNotificationPreferences().map {
-            it.map { it.toNotificationPreferences() }
+            it.map {
+                try {
+                    NotificationCategory.valueOf(it.category)
+                }
+                catch (e: IllegalArgumentException){
+                    NotificationCategory.UNDEFINED
+                }
+            }
         }
     }
 

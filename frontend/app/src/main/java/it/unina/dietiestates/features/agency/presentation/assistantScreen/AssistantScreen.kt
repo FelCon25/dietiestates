@@ -32,12 +32,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import it.unina.dietiestates.features.agency.presentation._components.AgentItem
 import it.unina.dietiestates.ui.theme.Green80
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssistantScreen(
-    viewModel: AssistantScreenViewModel = koinViewModel(),
+    viewModel: AssistantScreenViewModel,
     topBar: @Composable () -> Unit,
     onAddNewAgentNavigation: () -> Unit
 ) {

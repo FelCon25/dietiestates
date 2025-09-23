@@ -64,7 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import it.unina.dietiestates.BuildConfig
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
-import it.unina.dietiestates.features.profile.domain.NotificationType
+import it.unina.dietiestates.features.profile.domain.NotificationCategory
 import it.unina.dietiestates.features.profile.presentation._components.SessionItem
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -328,7 +328,7 @@ fun ProfileScreen(
 
                                 Switch(
                                     enabled = !state.isPropertyNotificationStatusChanging,
-                                    checked = state.notificationPreferences.find { it.category == NotificationType.NEW_PROPERTY_MATCH }?.enabled ?: false,
+                                    checked = state.notificationPreferences.any{ it == NotificationCategory.NEW_PROPERTY_MATCH },
                                     onCheckedChange = viewModel::setPropertyNotificationStatus
                                 )
                             }
@@ -360,7 +360,7 @@ fun ProfileScreen(
 
                                 Switch(
                                     enabled = !state.isPromotionalNotificationStatusChanging,
-                                    checked = state.notificationPreferences.find { it.category == NotificationType.PROMOTIONAL }?.enabled ?: false,
+                                    checked = state.notificationPreferences.any{ it == NotificationCategory.PROMOTIONAL },
                                     onCheckedChange = viewModel::setPromotionalNotificationStatus
                                 )
                             }

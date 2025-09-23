@@ -48,6 +48,10 @@ sealed interface Route {
     //Agent
     @Serializable
     data object AgentGraph: Route
+    @Serializable
+    data object Agent: Route
+    @Serializable
+    data object AddProperty: Route
 
 
     @Serializable

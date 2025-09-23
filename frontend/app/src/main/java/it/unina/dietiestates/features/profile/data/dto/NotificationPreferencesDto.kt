@@ -4,6 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class NotificationPreferencesDto(
-    val enabled: Boolean,
     val category: String
 )

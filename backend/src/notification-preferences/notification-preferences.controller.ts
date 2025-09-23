@@ -30,4 +30,12 @@ export class NotificationPreferencesController {
         const user = req.user as { userId: number };
         return this.notificationPreferencesService.updatePreferenceForCategory(user.userId, NotificationCategory.NEW_PROPERTY_MATCH, dto.enabled);
     }
+
+
+    @UseGuards(AccessTokenGuard)
+    @Post('send-promotional')
+    async sendPromotionalNotification(@Req() req: Request) {
+        const user = req.user as { userId: number };
+        return this.notificationPreferencesService.sendPromotionalNotification();
+    }
 }

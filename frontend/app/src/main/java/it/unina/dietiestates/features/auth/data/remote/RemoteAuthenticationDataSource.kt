@@ -21,4 +21,6 @@ interface RemoteAuthenticationDataSource {
     suspend fun logout(): EmptyResult<DataError.Remote>
 
     suspend fun deleteSession(sessionId: Int): EmptyResult<DataError.Remote>
+
+    suspend fun sendPushNotificationToken(token: String): EmptyResult<DataError.Remote>
 }

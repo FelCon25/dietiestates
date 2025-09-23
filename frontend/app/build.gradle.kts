@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.konan.properties.loadProperties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,11 +6,13 @@ plugins {
     alias(libs.plugins.ksp)
 
     id("com.google.gms.google-services")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
     namespace = "it.unina.dietiestates"
     compileSdk = 36
+
 
     defaultConfig {
         applicationId = "it.unina.dietiestates"
@@ -22,20 +22,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        android.buildFeatures.buildConfig = true
-
-        buildConfigField(
-            "String",
-            "GOOGLE_CLIENT_ID",
-            "\"${loadProperties("local.properties").getProperty("GOOGLE_CLIENT_ID")}\""
-        )
-
-        buildConfigField(
-            "String",
-            "BASE_URL",
-            "\"${loadProperties("local.properties").getProperty("BASE_URL")}\""
-        )
     }
 
     buildTypes {
@@ -56,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -97,9 +84,24 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
 
+    implementation("com.google.firebase:firebase-messaging:25.0.1")
+
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
-    implementation("org.ramani-maps:ramani-maplibre:0.9.2")
+    implementation("com.google.android.gms:play-services-maps:19.2.0")
+
+    implementation("com.google.maps.android:maps-compose:6.10.0")
+    // Optionally, you can include the Compose utils library for Clustering,
+    // Street View metadata checks, etc.
+    implementation("com.google.maps.android:maps-compose-utils:6.10.0")
+    // Optionally, you can include the widgets library for ScaleBar, etc.
+    implementation("com.google.maps.android:maps-compose-widgets:6.10.0")
+}
+
+secrets {
+    propertiesFileName = "secrets.properties"
+    // A properties file containing default secret values. This file can be checked in version control.
+    defaultPropertiesFileName = "local.defaults.properties"
 }

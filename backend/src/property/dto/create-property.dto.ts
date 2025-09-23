@@ -1,12 +1,8 @@
-import { PropertyType } from '@prisma/client';
+import { InsertionType, PropertyCondition, PropertyType } from '@prisma/client';
 import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsEnum, IsOptional, IsArray } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class CreatePropertyDto {
-
-    @IsNotEmpty()
-    @IsString()
-    title: string;
 
     @IsNotEmpty()
     @IsString()
@@ -75,7 +71,12 @@ export class CreatePropertyDto {
     @IsNotEmpty()
     @IsEnum(PropertyType)
     @Transform(({ value }) => value.toUpperCase().trim() as PropertyType)
-    type: PropertyType;
+    propertyType: PropertyType;
+
+    @IsNotEmpty()
+    @IsEnum(InsertionType)
+    @Transform(({ value }) => value.toUpperCase().trim() as InsertionType)
+    insertionType: InsertionType;
 
     @IsNotEmpty()
     @IsString()
@@ -108,6 +109,8 @@ export class CreatePropertyDto {
     longitude: number;
 
     @IsOptional()
-    @IsString()
-    propertyCondition?: string;
+    @IsNotEmpty()
+    @IsEnum(PropertyCondition)
+    @Transform(({ value }) => value.toUpperCase().trim() as PropertyCondition)
+    propertyCondition?: PropertyCondition;
 }

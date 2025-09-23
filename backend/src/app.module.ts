@@ -8,6 +8,7 @@ import { AgencyAdminModule } from './agency-admin/agency-admin.module';
 import { PropertyModule } from './property/property.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { UserModule } from './user/user.module';
+import * as admin from 'firebase-admin';
 
 @Module({
   imports: [
@@ -22,4 +23,14 @@ import { UserModule } from './user/user.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule { 
+  constructor() {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+}

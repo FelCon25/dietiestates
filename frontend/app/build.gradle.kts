@@ -5,8 +5,8 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.ksp)
 
-    id("com.google.gms.google-services")
-    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.secrets.gradle.plugin)
 }
 
 android {
@@ -47,7 +47,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -55,7 +54,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -64,44 +62,48 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    //Material design
+    implementation(libs.androidx.material3)
+    implementation(libs.material.icons)
+
+    //Navigation compose
+    implementation(libs.navigation.compose)
+
+    //Splash Screen
+    implementation(libs.androidx.core.splashscreen)
+
+    //Datastore Preferences
+    implementation(libs.androidx.datastore.preferences)
+
+    //Async Images
+    implementation(libs.bundles.coil)
+
+    //DI
     api(libs.koin.core)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
 
+    //HTTP Requests
     implementation(libs.bundles.ktor)
-    implementation(libs.bundles.coil)
 
-    implementation(libs.androidx.datastore.preferences)
+    //Google Auth
+    implementation(libs.googleid)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
 
-    implementation(libs.navigation.compose)
+    //Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
-    implementation(libs.material.icons)
-
-    implementation(libs.androidx.core.splashscreen)
-
-
-    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
-
-    implementation("com.google.firebase:firebase-messaging:25.0.1")
-
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
-
-    implementation("com.google.android.gms:play-services-maps:19.2.0")
-
-    implementation("com.google.maps.android:maps-compose:6.10.0")
-    // Optionally, you can include the Compose utils library for Clustering,
-    // Street View metadata checks, etc.
-    implementation("com.google.maps.android:maps-compose-utils:6.10.0")
-    // Optionally, you can include the widgets library for ScaleBar, etc.
-    implementation("com.google.maps.android:maps-compose-widgets:6.10.0")
+    //Google Maps
+    implementation(libs.maps.compose)
+    implementation(libs.maps.compose.utils)
+    implementation(libs.maps.compose.widgets)
 }
 
 secrets {
     propertiesFileName = "secrets.properties"
-    // A properties file containing default secret values. This file can be checked in version control.
     defaultPropertiesFileName = "local.defaults.properties"
 }

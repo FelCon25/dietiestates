@@ -22,6 +22,10 @@ sealed interface Route {
     data object SavedSearches: Route
     @Serializable
     data object Bookmarks: Route
+    @Serializable
+    data object DrawSearch: Route
+    @Serializable
+    data object SearchFilters: Route
 
 
 

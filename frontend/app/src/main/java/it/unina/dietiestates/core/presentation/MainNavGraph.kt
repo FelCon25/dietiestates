@@ -27,8 +27,10 @@ import it.unina.dietiestates.features.agency.presentation.assistantScreen.Assist
 import it.unina.dietiestates.features.agency.presentation.assistantScreen.AssistantScreenViewModel
 import it.unina.dietiestates.features.auth.presentation.authGraph
 import it.unina.dietiestates.features.profile.presentation.ProfileScreen
+import it.unina.dietiestates.features.property.presentation.SearchFiltersScreen
 import it.unina.dietiestates.features.property.presentation.addProperty.AddPropertyScreen
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreen
+import it.unina.dietiestates.features.property.presentation.drawSearch.DrawSearchScreen
 import it.unina.dietiestates.features.property.presentation.home.HomeScreen
 import it.unina.dietiestates.features.property.presentation.savedSearches.SavedSearchesScreen
 import org.koin.compose.viewmodel.koinViewModel
@@ -57,6 +59,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
             )
 
             userScreens(
+                navController = navController,
                 topBar = {
                     state.user?.let { user ->
                         TopBar(
@@ -133,6 +136,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
 }
 
 private fun NavGraphBuilder.userScreens(
+    navController: NavHostController,
     topBar: @Composable () -> Unit,
     bottomBar: @Composable (Route, () -> Unit) -> Unit
 ){
@@ -143,7 +147,13 @@ private fun NavGraphBuilder.userScreens(
         composable<Route.Home> {
             HomeScreen(
                 topBar = topBar,
-                bottomBar = bottomBar
+                bottomBar = bottomBar,
+                onDrawSearchNavigation = {
+                    navController.navigate(Route.DrawSearch)
+                },
+                onSearchNearYouNavigation = {
+                    //todo
+                }
             )
         }
 
@@ -156,6 +166,25 @@ private fun NavGraphBuilder.userScreens(
 
         composable<Route.Bookmarks> {
             BookmarksScreen(bottomBar = bottomBar)
+        }
+
+        composable<Route.DrawSearch> {
+            DrawSearchScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                },
+                onConfirmNavigation = {
+                    navController.navigate(Route.SearchFilters)
+                }
+            )
+        }
+
+        composable<Route.SearchFilters> {
+            SearchFiltersScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                }
+            )
         }
     }
 }

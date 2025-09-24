@@ -27,7 +27,7 @@ import it.unina.dietiestates.ui.theme.Green80
 fun ButtonsOptionSelector(
     modifier: Modifier = Modifier,
     options: List<String>,
-    selectedOptionIndex: Int = 0,
+    selectedOptionIndex: Int? = 0,
     onOptionSelected: (Int, String) -> Unit
 ) {
 
@@ -39,7 +39,7 @@ fun ButtonsOptionSelector(
     ) {
 
         repeat(options.size){ i ->
-            val isSelected = i == selectedOptionIndex
+            val isSelected = if(selectedOptionIndex != null) i == selectedOptionIndex else false
 
             val backColor by animateColorAsState(
                 targetValue = if(isSelected) Green80 else Color.White,

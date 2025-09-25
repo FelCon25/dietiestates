@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import it.unina.dietiestates.BuildConfig.BASE_URL
@@ -12,6 +13,7 @@ import it.unina.dietiestates.core.data.safeCall
 import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.property.data.dto.PropertyDto
+import it.unina.dietiestates.features.property.data.dto.NearbyPinDto
 
 class RemotePropertyDataSourceImpl(
     private val httpClient: HttpClient
@@ -63,6 +65,27 @@ class RemotePropertyDataSourceImpl(
         return safeCall<List<PropertyDto>> {
             httpClient.get(
                 urlString = "$BASE_URL/property/by-agent"
+            )
+        }
+    }
+
+    override suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPinDto>, DataError.Remote> {
+        return safeCall<List<NearbyPinDto>> {
+            httpClient.get(
+                urlString = "$BASE_URL/property/nearby"
+            ) {
+                parameter("latitude", latitude)
+                parameter("longitude", longitude)
+                parameter("radiusKm", radiusKm)
+                if(!insertionType.isNullOrBlank()) parameter("insertionType", insertionType)
+            }
+        }
+    }
+
+    override suspend fun getPropertyById(propertyId: Int): Result<PropertyDto, DataError.Remote> {
+        return safeCall<PropertyDto> {
+            httpClient.get(
+                urlString = "$BASE_URL/property/$propertyId"
             )
         }
     }

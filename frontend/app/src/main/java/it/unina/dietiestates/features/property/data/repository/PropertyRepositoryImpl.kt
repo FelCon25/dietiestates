@@ -12,6 +12,8 @@ import it.unina.dietiestates.features.property.domain.Property
 import it.unina.dietiestates.features.property.domain.PropertyRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import it.unina.dietiestates.features.property.data.mappers.toNearbyPin
+import it.unina.dietiestates.features.property.domain.NearbyPin
 
 class PropertyRepositoryImpl(
     private val remotePropertyDataSource: RemotePropertyDataSource,
@@ -42,5 +44,16 @@ class PropertyRepositoryImpl(
         }
     }
 
+    override suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPin>, DataError.Remote> {
+        return remotePropertyDataSource.getNearbyPins(latitude, longitude, radiusKm, insertionType).map {
+            it.map { it.toNearbyPin() }
+        }
+    }
+
+    override suspend fun getPropertyById(propertyId: Int): Result<Property, DataError.Remote> {
+        return remotePropertyDataSource.getPropertyById(propertyId).map {
+            it.toProperty()
+        }
+    }
 
 }

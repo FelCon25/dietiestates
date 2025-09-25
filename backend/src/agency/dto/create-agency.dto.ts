@@ -49,12 +49,11 @@ export class CreateAgencyDto {
     @IsNotEmpty()
     @IsString()
     country: string;
-
-    @IsOptional()
+    @IsNotEmpty()
     @IsNumber()
-    latitude?: number;
+    latitude: number;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsNumber()
-    longitude?: number;
+    longitude: number;
 }

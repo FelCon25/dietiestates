@@ -11,4 +11,7 @@ interface PropertyRepository {
 
     suspend fun getAgentProperties(): Result<List<Property>, DataError.Remote>
 
+    suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPin>, DataError.Remote>
+
+    suspend fun getPropertyById(propertyId: Int): Result<Property, DataError.Remote>
 }

@@ -2,6 +2,13 @@ import { InsertionType, PropertyCondition, PropertyType } from '@prisma/client';
 import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
+const stringToBoolean = (value: any): boolean => {
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return Boolean(value);
+};
+
 export class CreatePropertyDto {
 
     @IsNotEmpty()
@@ -29,44 +36,28 @@ export class CreatePropertyDto {
     floors: number;
 
     @IsNotEmpty()
-    @Transform(({ value }) => {
-      if (value === 'true' || value === true) return true;
-      if (value === 'false' || value === false) return false;
-      return value;
-    })
+    @Transform(({ value }) => stringToBoolean(value))
     @IsBoolean()
-    elevator: boolean | string;
+    elevator: boolean;
 
     @IsNotEmpty()
     @IsString()
     energyClass: string;
 
     @IsNotEmpty()
-    @Transform(({ value }) => {
-      if (value === 'true' || value === true) return true;
-      if (value === 'false' || value === false) return false;
-      return value;
-    })
+    @Transform(({ value }) => stringToBoolean(value))
     @IsBoolean()
-    concierge: boolean | string;
+    concierge: boolean;
 
     @IsNotEmpty()
-    @Transform(({ value }) => {
-      if (value === 'true' || value === true) return true;
-      if (value === 'false' || value === false) return false;
-      return value;
-    })
+    @Transform(({ value }) => stringToBoolean(value))
     @IsBoolean()
-    airConditioning: boolean | string;
+    airConditioning: boolean;
 
     @IsOptional()
-    @Transform(({ value }) => {
-      if (value === 'true' || value === true) return true;
-      if (value === 'false' || value === false) return false;
-      return value;
-    })
+    @Transform(({ value }) => value ? stringToBoolean(value) : undefined)
     @IsBoolean()
-    furnished?: boolean | string;
+    furnished?: boolean;
 
     @IsNotEmpty()
     @IsEnum(PropertyType)

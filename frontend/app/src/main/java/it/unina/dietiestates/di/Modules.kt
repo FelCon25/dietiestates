@@ -43,6 +43,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import it.unina.dietiestates.features.property.presentation.drawSearch.DrawSearchScreenViewModel
 
 val mainModule = module {
     single { TokenManager(context = androidApplication()) }
@@ -81,4 +82,5 @@ val mainModule = module {
 
     viewModelOf(::AgentScreenViewModel)
     viewModelOf(::AddPropertyScreenViewModel)
+    viewModelOf(::DrawSearchScreenViewModel)
 }

@@ -5,6 +5,7 @@ import { SearchPropertyDto } from './dto/search-property.dto';
 import { Prisma, PropertyImage } from '@prisma/client';
 import * as path from 'path';
 import * as fs from 'fs';
+import { NearbyPropertyDto } from './dto/nearby-property.dto';
 
 @Injectable()
 export class PropertyService {
@@ -12,8 +13,8 @@ export class PropertyService {
 
 
   async createPropertyWithImages(
-    agentUserId: number, 
-    dto: CreatePropertyDto, 
+    agentUserId: number,
+    dto: CreatePropertyDto,
     files?: Express.Multer.File[]
   ) {
     const agentOrAdmin = await this.validateAgentAndAgency(agentUserId);
@@ -22,7 +23,7 @@ export class PropertyService {
       const property = await tx.property.create({
         data: {
           ...dto,
-          agentId: agentOrAdmin.userId, // Use userId for both agent and admin
+          agentId: agentOrAdmin.userId,
           agencyId: agentOrAdmin.agency.agencyId,
         },
       });
@@ -70,11 +71,11 @@ export class PropertyService {
     return files.map((file, index) => {
       const filename = path.basename(file.path);
       const finalPath = path.join(propertyImageDir, filename);
-      
+
       this.moveFile(file.path, finalPath);
-      
+
       const url = path.posix.join('/uploads', 'property-images', String(propertyId), filename);
-      
+
       return {
         propertyId,
         url,
@@ -108,7 +109,7 @@ export class PropertyService {
         fs.rmSync(path.dirname(tempDir), { recursive: true, force: true });
       } catch {
         // Ignore cleanup errors - temp files will be cleaned up eventually
-            }
+      }
     }
   }
 
@@ -162,7 +163,7 @@ export class PropertyService {
 
     return mappedItems;
   }
-    
+
 
   async getProperties(page: number = 1, pageSize: number = 10) {
     const skip = (page - 1) * pageSize;
@@ -226,7 +227,7 @@ export class PropertyService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
-    
+
     // sorting logic
     const sortBy = dto.sortBy ?? 'createdAt';
     const sortOrder = dto.sortOrder ?? 'desc';
@@ -273,7 +274,7 @@ export class PropertyService {
     }
 
     if (dto.type) {
-      where.type = dto.type;
+      where.propertyType = dto.type;
     }
 
     if (dto.propertyCondition) {
@@ -341,23 +342,59 @@ export class PropertyService {
     };
   }
 
-  
+  async getNearbyProperties(dto: NearbyPropertyDto) {
+    const radiusMeters = (dto.radiusKm ?? 1) * 1000;
+
+    const insertionTypeClause = dto.insertionType
+      ? Prisma.sql` AND p."insertionType"::text = ${dto.insertionType} `
+      : Prisma.sql``;
+
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT 
+        p."propertyId" as "propertyId",
+        CAST(p."latitude" AS double precision) as latitude,
+        CAST(p."longitude" AS double precision) as longitude,
+        CAST(p."price" AS double precision) as price,
+        p."insertionType" as "insertionType",
+        ST_Distance(
+          geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
+          geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326))
+        ) AS distance_m
+      FROM properties p
+      WHERE ST_DWithin(
+        geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
+        geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326)),
+        ${radiusMeters}
+      )
+      ${insertionTypeClause}
+      ORDER BY distance_m ASC
+    `);
+
+    return rows.map(r => ({
+      propertyId: r.propertyId,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      price: r.price,
+      insertionType: r.insertionType,
+      distanceMeters: r.distance_m,
+    }));
+  }
+
+
   private async ensureAgentOwnsProperty(userId: number, propertyId: number) {
-    const property = await this.prisma.property.findUnique({ 
+    const property = await this.prisma.property.findUnique({
       where: { propertyId },
       include: { agent: true, agency: true }
     });
-    
+
     if (!property) {
       throw new NotFoundException('Property not found');
     }
 
-    // Check if user is the agent who owns the property
     if (property.agentId === userId) {
       return property;
     }
 
-    // Check if user is admin of the agency that owns the property
     const agencyAdmin = await this.prisma.agencyAdmin.findUnique({
       where: { userId }
     });
@@ -365,7 +402,7 @@ export class PropertyService {
     if (agencyAdmin && property.agencyId === agencyAdmin.userId) {
       return property;
     }
-    
+
     throw new NotFoundException('Property not found');
   }
 
@@ -375,7 +412,7 @@ export class PropertyService {
     files: Express.Multer.File[],
   ) {
     await this.ensureAgentOwnsProperty(agentUserId, propertyId);
-    
+
     if (!files?.length) {
       return [];
     }
@@ -398,7 +435,7 @@ export class PropertyService {
       orderBy: { order: 'desc' },
       take: 1,
     });
-    
+
     return existing.length > 0 ? (existing[0].order + 1) : 0;
   }
 
@@ -408,7 +445,7 @@ export class PropertyService {
     startOrder: number
   ) {
     const baseUrlPath = `/uploads/property-images/${propertyId}`;
-    
+
     return files.map((file, index) => ({
       propertyId,
       url: path.posix.join(baseUrlPath, path.basename(file.path)),
@@ -423,13 +460,11 @@ export class PropertyService {
       throw new NotFoundException('Image not found');
     }
 
-    // Attempt to delete the file from disk (best effort)
     const filePath = path.join(process.cwd(), image.url.replace(/^\//, ''));
-    try { fs.unlinkSync(filePath); } catch (_) {}
+    try { fs.unlinkSync(filePath); } catch (_) { }
 
     await this.prisma.propertyImage.delete({ where: { imageId } });
 
-    // Normalize orders after deletion
     const images = await this.prisma.propertyImage.findMany({
       where: { propertyId },
       orderBy: { order: 'asc' },

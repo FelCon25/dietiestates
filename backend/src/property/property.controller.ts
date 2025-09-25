@@ -25,6 +25,7 @@ import { SearchPropertyDto } from './dto/search-property.dto';
 import { FilesInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { makePropertyImagesStorageConfig, makePropertyCreationStorageConfig } from 'src/utils/multer.config';
 import { ReorderPropertyImagesDto } from './dto/reorder-property-images.dto';
+import { NearbyPropertyDto } from './dto/nearby-property.dto';
 
 @Controller('property')
 export class PropertyController {
@@ -73,13 +74,19 @@ export class PropertyController {
     return this.propertyService.searchProperties(dto);
   }
 
+  @Get('nearby')
+  async getNearbyProperties(
+    @Query(new ValidationPipe({ transform: true })) dto: NearbyPropertyDto,
+  ) {
+    return this.propertyService.getNearbyProperties(dto);
+  }
+
   @Get(':id')
   async getPropertyById(@Param('id') id: string) {
     const propertyId = Number(id);
     return this.propertyService.getPropertyById(propertyId);
   }
 
-  // Upload multiple images for a property
   @Post(':id/images')
   @Roles(Role.AGENT)
   @UseGuards(AccessTokenGuard, RolesGuard)
@@ -96,7 +103,6 @@ export class PropertyController {
     return this.propertyService.addPropertyImages(user.userId, propertyId, files);
   }
 
-  // Delete a single property image
   @Delete(':propertyId/images/:imageId')
   @Roles(Role.AGENT)
   @UseGuards(AccessTokenGuard, RolesGuard)
@@ -111,7 +117,6 @@ export class PropertyController {
     return this.propertyService.deletePropertyImage(user.userId, propertyId, imageId);
   }
 
-  // Reorder images for a property
   @Patch(':propertyId/images/reorder')
   @Roles(Role.AGENT, Role.ADMIN_AGENCY)
   @UseGuards(AccessTokenGuard, RolesGuard)

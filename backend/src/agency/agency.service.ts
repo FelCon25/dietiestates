@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 
@@ -21,7 +21,7 @@ export class AgencyService {
             where: { userId },
             include: { agency: true },
         });
-        if (!admin || !admin.agency) throw new NotFoundException('Agency not found for admin');
+        if (!admin || !admin.agency) throw new NotFoundException('Agency not found for agent');
         return admin.agency;
     }
 
@@ -44,11 +44,27 @@ export class AgencyService {
     }
 
     async create(userId: number, dto: CreateAgencyDto) {
-        const admin = await this.prisma.agencyAdmin.findUnique({
+        const user = await this.prisma.user.findUnique({
+            where: { userId },
+            select: { role: true }
+        });
+        
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        
+        if (user.role !== 'ADMIN_AGENCY') {
+            throw new ForbiddenException('Only admins can create agencies');
+        }
+
+        let admin = await this.prisma.agencyAdmin.findUnique({
             where: { userId },
         });
+        
         if (!admin) {
-            throw new NotFoundException('Admin not found for this user');
+            admin = await this.prisma.agencyAdmin.create({
+                data: { userId }
+            });
         }
 
         const existingAgency = await this.prisma.agency.findUnique({

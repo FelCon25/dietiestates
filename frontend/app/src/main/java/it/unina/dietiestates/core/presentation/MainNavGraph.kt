@@ -165,7 +165,10 @@ private fun NavGraphBuilder.userScreens(
         }
 
         composable<Route.Bookmarks> {
-            BookmarksScreen(bottomBar = bottomBar)
+            BookmarksScreen(
+                topBar = topBar,
+                bottomBar = bottomBar
+            )
         }
 
         composable<Route.DrawSearch> {

@@ -47,6 +47,16 @@ export class PropertyController {
   }
 
   
+  @Get('saved')
+  @Roles(Role.USER)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async getSavedProperties(
+    @Req() req: Request
+  ){
+     const user = req.user as AuthUser;
+    return this.propertyService.getSavedProperties(user.userId);
+  }
+
   @Get('by-agent')
   @Roles(Role.AGENT)
   @UseGuards(AccessTokenGuard, RolesGuard)

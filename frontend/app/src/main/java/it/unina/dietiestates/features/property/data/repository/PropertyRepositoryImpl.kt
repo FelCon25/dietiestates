@@ -56,4 +56,15 @@ class PropertyRepositoryImpl(
         }
     }
 
+    override suspend fun getSavedProperties(): Flow<Result<List<Property>, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.getSavedProperties().map { properties ->
+                properties.map { it.toProperty() }
+            })
+
+            emit(Result.IsLoading(false))
+        }
+    }
 }

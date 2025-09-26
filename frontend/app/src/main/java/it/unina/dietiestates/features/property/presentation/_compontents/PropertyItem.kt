@@ -43,7 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import it.unina.dietiestates.BuildConfig
+import it.unina.dietiestates.BuildConfig.BASE_URL
 import it.unina.dietiestates.R
 import it.unina.dietiestates.features.agency.domain.getEmptyAgency
 import it.unina.dietiestates.features.property.domain.InsertionType
@@ -72,9 +72,11 @@ fun PropertyItem(
                     .fillMaxWidth()
                     .aspectRatio(4 / 3f)
             ) {
+
                 AsyncImage(
                     modifier = Modifier.fillMaxSize(),
-                    model = "${BuildConfig.BASE_URL}${property.images.firstOrNull()}",
+                    model = "${BASE_URL}${property.images.firstOrNull()}",
+                    error = painterResource(R.drawable.no_image_placeholder),
                     contentDescription = null,
                     contentScale = ContentScale.Crop
                 )

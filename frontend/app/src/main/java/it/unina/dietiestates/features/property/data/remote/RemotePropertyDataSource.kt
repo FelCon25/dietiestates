@@ -15,4 +15,6 @@ interface RemotePropertyDataSource {
     suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPinDto>, DataError.Remote>
 
     suspend fun getPropertyById(propertyId: Int): Result<PropertyDto, DataError.Remote>
+
+    suspend fun getSavedProperties(): Result<List<PropertyDto>, DataError.Remote>
 }

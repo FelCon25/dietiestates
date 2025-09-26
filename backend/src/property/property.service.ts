@@ -134,6 +134,31 @@ export class PropertyService {
     return mapped;
   }
 
+  async getSavedProperties(userId: number) {
+    const savedProperties = await this.prisma.savedProperty.findMany({
+      where: { userId },
+      include: {
+        property: {
+          include: {
+            images: {
+              where: { order: 0 },
+              take: 1,
+            },
+            agency: true,
+          },
+        },
+      },
+      orderBy: { savedAt: 'desc' },
+    });
+
+    const mappedItems = savedProperties.map((item) => ({
+      ...item.property,
+      images: item.property.images.length > 0 ? item.property.images.map((img) => img.url) : [],
+    }));
+    
+    return mappedItems;
+  }
+
   async getAgentProperties(agentUserId: number) {
     const agent = await this.prisma.agent.findUnique({
       where: { userId: agentUserId },

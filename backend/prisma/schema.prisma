@@ -26,8 +26,10 @@ model User {
   sessions          Session[]
   verificationCodes VerificationCode[]
   notificationPreferences UserNotificationPreference[]
+  savedProperty SavedProperty[]
 
   @@map("users")
+  
 }
 
 model Session {
@@ -133,6 +135,7 @@ model Property {
   agency            Agency          @relation(fields: [agencyId], references: [agencyId])
   agent             Agent           @relation(fields: [agentId], references: [userId])
   images            PropertyImage[]
+  savedProperty     SavedProperty[]
 
   @@map("properties")
 }
@@ -152,13 +155,13 @@ model SavedSearch {
   maxSurfaceArea    Int?
   minRooms          Int?
   maxRooms          Int?
-  propertyCondition PropertyCondition?
+  propertyCondition PropertyCondition?//
   elevator          Boolean?
   airConditioning   Boolean?
   concierge         Boolean?
   energyClass       String?
-  furnished         Boolean?
-  propertyType      PropertyType?
+  furnished         Boolean?//
+  propertyType      PropertyType?//
   insertionType     InsertionType?
   minPrice          Decimal?
   maxPrice          Decimal?
@@ -175,6 +178,17 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [propertyId])
 
   @@map("property_images")
+}
+
+model SavedProperty {
+  userId     Int
+  propertyId Int
+  savedAt    DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [userId])
+  property   Property @relation(fields: [propertyId], references: [propertyId])
+
+  @@id([userId, propertyId])
+  @@map("saved_properties")
 }
 
 model UserNotificationPreference {

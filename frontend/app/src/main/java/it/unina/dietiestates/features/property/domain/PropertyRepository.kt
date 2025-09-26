@@ -14,4 +14,6 @@ interface PropertyRepository {
     suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPin>, DataError.Remote>
 
     suspend fun getPropertyById(propertyId: Int): Result<Property, DataError.Remote>
+
+    suspend fun getSavedProperties(): Flow<Result<List<Property>, DataError.Remote>>
 }

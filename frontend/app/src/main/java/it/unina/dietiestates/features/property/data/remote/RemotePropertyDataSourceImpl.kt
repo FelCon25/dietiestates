@@ -89,4 +89,12 @@ class RemotePropertyDataSourceImpl(
             )
         }
     }
+
+    override suspend fun getSavedProperties(): Result<List<PropertyDto>, DataError.Remote> {
+        return safeCall<List<PropertyDto>> {
+            httpClient.get(
+                urlString = "$BASE_URL/property/saved"
+            )
+        }
+    }
 }

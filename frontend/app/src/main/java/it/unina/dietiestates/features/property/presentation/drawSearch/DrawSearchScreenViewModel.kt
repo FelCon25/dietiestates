@@ -2,14 +2,13 @@ package it.unina.dietiestates.features.property.presentation.drawSearch
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.property.domain.NearbyPin
+import it.unina.dietiestates.features.property.domain.Property
 import it.unina.dietiestates.features.property.domain.PropertyRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import it.unina.dietiestates.features.property.domain.Property
 
 class DrawSearchScreenViewModel(
     private val propertyRepository: PropertyRepository
@@ -41,13 +40,13 @@ class DrawSearchScreenViewModel(
 
     fun loadPropertyById(propertyId: Int) {
         viewModelScope.launch {
-            _isLoadingProperty.value = true
-            when(val res = propertyRepository.getPropertyById(propertyId)) {
-                is Result.Success -> _selectedProperty.value = res.data
-                is Result.Error -> _selectedProperty.value = null
-                is Result.IsLoading -> { /* no-op */ }
+            propertyRepository.getPropertyById(propertyId).collect { result ->
+                when(result) {
+                    is Result.Success -> _selectedProperty.value = result.data
+                    is Result.Error -> _selectedProperty.value = null
+                    is Result.IsLoading -> { _isLoadingProperty.value =  result.isLoading}
+                }
             }
-            _isLoadingProperty.value = false
         }
     }
 

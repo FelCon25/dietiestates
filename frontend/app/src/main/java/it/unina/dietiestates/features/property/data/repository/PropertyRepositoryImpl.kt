@@ -50,9 +50,15 @@ class PropertyRepositoryImpl(
         }
     }
 
-    override suspend fun getPropertyById(propertyId: Int): Result<Property, DataError.Remote> {
-        return remotePropertyDataSource.getPropertyById(propertyId).map {
-            it.toProperty()
+    override suspend fun getPropertyById(propertyId: Int): Flow<Result<Property, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.getPropertyById(propertyId).map {
+                it.toProperty()
+            })
+
+            emit(Result.IsLoading(false))
         }
     }
 

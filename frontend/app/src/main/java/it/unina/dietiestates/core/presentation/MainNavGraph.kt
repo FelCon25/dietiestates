@@ -32,6 +32,7 @@ import it.unina.dietiestates.features.property.presentation.addProperty.AddPrope
 import it.unina.dietiestates.features.property.presentation.bookmarks.BookmarksScreen
 import it.unina.dietiestates.features.property.presentation.drawSearch.DrawSearchScreen
 import it.unina.dietiestates.features.property.presentation.home.HomeScreen
+import it.unina.dietiestates.features.property.presentation.propertyDetails.PropertyDetailsScreen
 import it.unina.dietiestates.features.property.presentation.savedSearches.SavedSearchesScreen
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -142,7 +143,7 @@ private fun NavGraphBuilder.userScreens(
 ){
 
     navigation<Route.UserGraph>(
-        startDestination = Route.Home
+        startDestination = Route.Bookmarks
     ){
         composable<Route.Home> {
             HomeScreen(
@@ -167,7 +168,10 @@ private fun NavGraphBuilder.userScreens(
         composable<Route.Bookmarks> {
             BookmarksScreen(
                 topBar = topBar,
-                bottomBar = bottomBar
+                bottomBar = bottomBar,
+                onPropertyDetailsNavigate = { propertyId ->
+                    navController.navigate(Route.PropertyDetails(propertyId))
+                }
             )
         }
 
@@ -184,6 +188,14 @@ private fun NavGraphBuilder.userScreens(
 
         composable<Route.SearchFilters> {
             SearchFiltersScreen(
+                onBackNavigation = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        composable<Route.PropertyDetails> {
+            PropertyDetailsScreen(
                 onBackNavigation = {
                     navController.navigateUp()
                 }

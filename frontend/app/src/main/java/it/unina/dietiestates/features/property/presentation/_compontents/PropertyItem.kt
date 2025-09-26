@@ -56,14 +56,16 @@ import java.text.NumberFormat
 @Composable
 fun PropertyItem(
     modifier: Modifier = Modifier,
-    property: Property
+    property: Property,
+    onClick: () -> Unit = {}
 ) {
 
     val numberFormat = remember { NumberFormat.getNumberInstance(java.util.Locale.ITALY) }
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.background)
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.background),
+        onClick = onClick
     ) {
         Column {
 

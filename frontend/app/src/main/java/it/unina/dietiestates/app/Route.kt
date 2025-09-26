@@ -26,6 +26,8 @@ sealed interface Route {
     data object DrawSearch: Route
     @Serializable
     data object SearchFilters: Route
+    @Serializable
+    data class PropertyDetails(val id: Int): Route
 
 
 

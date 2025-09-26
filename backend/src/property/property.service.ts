@@ -245,7 +245,12 @@ export class PropertyService {
       throw new NotFoundException('Property not found');
     }
 
-    return property;
+    const mapped = {
+      ...property,
+      images: property.images.map((img) => img.url),
+    };
+
+    return mapped;
   }
 
   async searchProperties(dto: SearchPropertyDto) {

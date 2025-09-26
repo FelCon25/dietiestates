@@ -43,6 +43,7 @@ fun BookmarksScreen(
     viewModel: BookmarksScreenViewModel = koinViewModel(),
     topBar: @Composable () -> Unit,
     bottomBar: @Composable (Route, () -> Unit) -> Unit,
+    onPropertyDetailsNavigate: (propertyId: Int) -> Unit
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -116,12 +117,13 @@ fun BookmarksScreen(
                 ) {
                     items(state.properties){ property ->
                         PropertyItem(
-                            property = property
+                            property = property,
+                            onClick = {
+                                onPropertyDetailsNavigate(property.propertyId)
+                            }
                         )
                     }
                 }
-
-
             }
 
             Box(

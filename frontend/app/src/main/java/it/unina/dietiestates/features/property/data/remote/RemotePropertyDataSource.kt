@@ -2,7 +2,9 @@ package it.unina.dietiestates.features.property.data.remote
 
 import it.unina.dietiestates.core.data.FileInfo
 import it.unina.dietiestates.core.domain.DataError
+import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
+import it.unina.dietiestates.features.property.data.dto.IsPropertySavedResponse
 import it.unina.dietiestates.features.property.data.dto.PropertyDto
 import it.unina.dietiestates.features.property.data.dto.NearbyPinDto
 
@@ -17,4 +19,10 @@ interface RemotePropertyDataSource {
     suspend fun getPropertyById(propertyId: Int): Result<PropertyDto, DataError.Remote>
 
     suspend fun getSavedProperties(): Result<List<PropertyDto>, DataError.Remote>
+
+    suspend fun isPropertySaved(propertyId: Int): Result<IsPropertySavedResponse, DataError.Remote>
+
+    suspend fun saveProperty(propertyId: Int): EmptyResult<DataError.Remote>
+
+    suspend fun unsaveProperty(propertyId: Int): EmptyResult<DataError.Remote>
 }

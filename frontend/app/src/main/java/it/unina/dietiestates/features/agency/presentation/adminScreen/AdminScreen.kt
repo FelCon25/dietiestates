@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -115,13 +116,19 @@ fun AdminScreen(
                         expandedHeight = 200.dp,
                         title = {
                             state.agency?.let { agency ->
-                                AgencyItem(agency = agency)
+                                AgencyItem(
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .heightIn(max = 200.dp),
+                                    agency = agency
+                                )
                             }
                         },
                         scrollBehavior = scrollBehavior
                     )
                 }
             ) { paddingValues ->
+
                 Column(
                     modifier = Modifier
                         .padding(paddingValues)

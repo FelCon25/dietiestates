@@ -46,7 +46,44 @@ export class PropertyController {
     return this.propertyService.createPropertyWithImages(user.userId, dto, files);
   }
 
-  
+
+  @Post('saved/:propertyId')
+  @Roles(Role.USER)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async saveProperty(
+    @Req() req: Request,
+    @Param('propertyId') propertyIdParam: string,
+  ){
+    const user = req.user as AuthUser;
+    const propertyId = Number(propertyIdParam);
+    return this.propertyService.saveProperty(user.userId, propertyId);
+  }
+
+  @Delete('saved/:propertyId')
+  @Roles(Role.USER)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async unsaveProperty(
+    @Req() req: Request,
+    @Param('propertyId') propertyIdParam: string,
+  ){
+    const user = req.user as AuthUser;
+    const propertyId = Number(propertyIdParam);
+    return this.propertyService.unsaveProperty(user.userId, propertyId);
+  }
+
+  @Get('saved/:propertyId')
+  @Roles(Role.USER)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  async isSavedProperty(
+    @Req() req: Request,
+    @Param('propertyId') propertyIdParam: string,
+  ){
+      const user = req.user as AuthUser;
+    const propertyId = Number(propertyIdParam);
+    return this.propertyService.isSavedProperty(user.userId, propertyId);
+  }
+
+
   @Get('saved')
   @Roles(Role.USER)
   @UseGuards(AccessTokenGuard, RolesGuard)
@@ -56,6 +93,7 @@ export class PropertyController {
      const user = req.user as AuthUser;
     return this.propertyService.getSavedProperties(user.userId);
   }
+
 
   @Get('by-agent')
   @Roles(Role.AGENT)

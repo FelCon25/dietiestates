@@ -134,6 +134,16 @@ export class PropertyService {
     return mapped;
   }
 
+  async isSavedProperty(userId: number, propertyId: number) {
+    const saved = await this.prisma.savedProperty.findUnique({
+      where: {
+        userId_propertyId: { userId, propertyId }
+      }
+    });
+
+    return { isSaved: saved != null };
+  }
+
   async getSavedProperties(userId: number) {
     const savedProperties = await this.prisma.savedProperty.findMany({
       where: { userId },
@@ -157,6 +167,47 @@ export class PropertyService {
     }));
     
     return mappedItems;
+  }
+
+  async saveProperty(userId: number, propertyId: number) {
+    const property = await this.prisma.property.findUnique({ where: { propertyId } });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+
+    const existing = await this.prisma.savedProperty.findUnique({
+      where: {
+        userId_propertyId: { userId, propertyId }
+      }
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.savedProperty.create({
+      data: { userId, propertyId }
+    });
+  }
+
+  async unsaveProperty(userId: number, propertyId: number) {
+    const existing = await this.prisma.savedProperty.findUnique({
+      where: {
+        userId_propertyId: { userId, propertyId }
+      }
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Saved property not found');
+    }
+
+    await this.prisma.savedProperty.delete({
+      where: {
+        userId_propertyId: { userId, propertyId }
+      }
+    });
+
+    return { success: true };
   }
 
   async getAgentProperties(agentUserId: number) {

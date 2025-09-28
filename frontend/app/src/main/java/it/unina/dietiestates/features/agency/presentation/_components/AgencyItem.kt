@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -39,16 +39,17 @@ import it.unina.dietiestates.features.agency.domain.Agency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AgencyItem(agency: Agency) {
+fun AgencyItem(
+    modifier: Modifier = Modifier,
+    agency: Agency
+) {
 
     Column(
-        modifier = Modifier
-            .padding(10.dp)
-            .heightIn(max = 200.dp)
+        modifier = modifier
     ) {
         Text(
             text = agency.businessName,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -78,7 +79,6 @@ fun AgencyItem(agency: Agency) {
                 }
             }
 
-            // Colonna per la Mappa (se coordinate disponibili)
             val lat = agency.latitude?.toDoubleOrNull()
             val lng = agency.longitude?.toDoubleOrNull()
 
@@ -91,8 +91,8 @@ fun AgencyItem(agency: Agency) {
 
                 Box(
                     modifier = Modifier
-                        .weight(1f) // La mappa occupa meno spazio dei dettagli
-                        .height(120.dp) // Altezza fissa per la mappa
+                        .weight(1f)
+                        .height(120.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                 ) {
                     GoogleMap(
@@ -122,7 +122,7 @@ private fun DetailRow(icon: ImageVector, text: String, isLink: Boolean = false) 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
-            contentDescription = null, // L'icona è decorativa
+            contentDescription = null,
             modifier = Modifier.size(18.dp),
             tint = MaterialTheme.colorScheme.primary
         )

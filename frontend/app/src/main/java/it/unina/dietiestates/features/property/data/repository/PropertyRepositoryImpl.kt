@@ -5,15 +5,15 @@ import it.unina.dietiestates.core.data.FileReader
 import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.map
+import it.unina.dietiestates.features.property.data.mappers.toNearbyPin
 import it.unina.dietiestates.features.property.data.mappers.toProperty
 import it.unina.dietiestates.features.property.data.mappers.toPropertyDto
 import it.unina.dietiestates.features.property.data.remote.RemotePropertyDataSource
+import it.unina.dietiestates.features.property.domain.NearbyPin
 import it.unina.dietiestates.features.property.domain.Property
 import it.unina.dietiestates.features.property.domain.PropertyRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import it.unina.dietiestates.features.property.data.mappers.toNearbyPin
-import it.unina.dietiestates.features.property.domain.NearbyPin
 
 class PropertyRepositoryImpl(
     private val remotePropertyDataSource: RemotePropertyDataSource,
@@ -71,6 +71,19 @@ class PropertyRepositoryImpl(
             })
 
             emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun isPropertySaved(propertyId: Int): Result<Boolean, DataError.Remote> {
+        return remotePropertyDataSource.isPropertySaved(propertyId).map { it.isSaved }
+    }
+
+    override suspend fun toggleSavedProperty(propertyId: Int, isSaved: Boolean): Result<Unit, DataError.Remote> {
+        return if(isSaved){
+            remotePropertyDataSource.saveProperty(propertyId)
+        }
+        else{
+            remotePropertyDataSource.unsaveProperty(propertyId)
         }
     }
 }

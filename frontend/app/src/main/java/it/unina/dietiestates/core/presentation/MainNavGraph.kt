@@ -143,7 +143,7 @@ private fun NavGraphBuilder.userScreens(
 ){
 
     navigation<Route.UserGraph>(
-        startDestination = Route.Bookmarks
+        startDestination = Route.Home
     ){
         composable<Route.Home> {
             HomeScreen(

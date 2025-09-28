@@ -16,4 +16,8 @@ interface PropertyRepository {
     suspend fun getPropertyById(propertyId: Int): Flow<Result<Property, DataError.Remote>>
 
     suspend fun getSavedProperties(): Flow<Result<List<Property>, DataError.Remote>>
+
+    suspend fun isPropertySaved(propertyId: Int): Result<Boolean, DataError.Remote>
+
+    suspend fun toggleSavedProperty(propertyId: Int, isSaved: Boolean): Result<Unit, DataError.Remote>
 }

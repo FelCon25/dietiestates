@@ -1,17 +1,21 @@
 package it.unina.dietiestates.features.property.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.request.delete
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import it.unina.dietiestates.BuildConfig.BASE_URL
 import it.unina.dietiestates.core.data.FileInfo
 import it.unina.dietiestates.core.data.safeCall
 import it.unina.dietiestates.core.domain.DataError
+import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
+import it.unina.dietiestates.features.property.data.dto.IsPropertySavedResponse
 import it.unina.dietiestates.features.property.data.dto.PropertyDto
 import it.unina.dietiestates.features.property.data.dto.NearbyPinDto
 
@@ -94,6 +98,30 @@ class RemotePropertyDataSourceImpl(
         return safeCall<List<PropertyDto>> {
             httpClient.get(
                 urlString = "$BASE_URL/property/saved"
+            )
+        }
+    }
+
+    override suspend fun isPropertySaved(propertyId: Int): Result<IsPropertySavedResponse, DataError.Remote> {
+        return safeCall<IsPropertySavedResponse> {
+            httpClient.get(
+                urlString = "$BASE_URL/property/saved/$propertyId"
+            )
+        }
+    }
+
+    override suspend fun saveProperty(propertyId: Int): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post(
+                urlString = "$BASE_URL/property/saved/$propertyId"
+            )
+        }
+    }
+
+    override suspend fun unsaveProperty(propertyId: Int): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.delete(
+                urlString = "$BASE_URL/property/saved/$propertyId"
             )
         }
     }

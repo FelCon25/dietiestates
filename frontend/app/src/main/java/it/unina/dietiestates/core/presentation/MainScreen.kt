@@ -48,8 +48,7 @@ fun MainScreen(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        //color = Color(0xFFebfcef)
+        modifier = Modifier.fillMaxSize()
     ) {
         MainNavGraph(navController = navController, viewModel)
     }

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import it.unina.dietiestates.core.presentation.MainScreen
+import it.unina.dietiestates.core.presentation.MainScreenEvent
 import it.unina.dietiestates.core.presentation.MainScreenViewModel
 import it.unina.dietiestates.ui.theme.DietiestatesAndroidClientTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -18,7 +19,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        installSplashScreen()
+        installSplashScreen().apply {
+            setKeepOnScreenCondition {
+                viewModel.state.value.isReady.not()
+            }
+        }
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
@@ -28,6 +33,12 @@ class MainActivity : ComponentActivity() {
                 Color.TRANSPARENT, Color.TRANSPARENT
             )
         )
+
+        intent.getStringExtra("propertyId")?.let { propertyId ->
+            propertyId.toIntOrNull()?.let {
+                viewModel.onEvent(MainScreenEvent.OnReceivedPushNotification(it))
+            }
+        }
 
         setContent {
             DietiestatesAndroidClientTheme {

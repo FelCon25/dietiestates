@@ -30,7 +30,6 @@ sealed interface Route {
     data class PropertyDetails(val id: Int): Route
 
 
-
     //Admin
     @Serializable
     data object AdminGraph: Route

@@ -6,7 +6,6 @@ import com.google.firebase.messaging.FirebaseMessaging
 import it.unina.dietiestates.app.Route
 import it.unina.dietiestates.core.data.tokens.TokenManager
 import it.unina.dietiestates.core.domain.DataError
-import it.unina.dietiestates.core.domain.User
 import it.unina.dietiestates.core.domain.onError
 import it.unina.dietiestates.core.domain.onLoading
 import it.unina.dietiestates.core.domain.onSuccess
@@ -58,9 +57,26 @@ class MainScreenViewModel(
 
     fun onEvent(event: MainScreenEvent){
         when(event){
+            is MainScreenEvent.OnSignIn -> {
+                _state.update {
+                    it.copy(user = event.user)
+                }
+                if(event.user.role == "USER"){
+                    onEvent(MainScreenEvent.OnSendPushNotificationToken)
+                }
+            }
+
             is MainScreenEvent.OnLogout -> {
                 viewModelScope.launch {
-                    _eventsChannel.send(MainScreenEvent.OnLogout)
+                    _eventsChannel.send(event)
+                }
+            }
+
+            is MainScreenEvent.OnReceivedPushNotification -> {
+                _state.update {
+                    it.copy(
+                        propertyIdFromNotification = event.propertyId
+                    )
                 }
             }
 
@@ -73,26 +89,14 @@ class MainScreenViewModel(
         }
     }
 
-    fun addUserFromAuth(user: User){
-        _state.update {
-            it.copy(user = user)
-        }
-        if(user.role == "USER"){
-            onEvent(MainScreenEvent.OnSendPushNotificationToken)
-        }
-    }
-
-
     suspend fun getMe(){
         authRepository.getMe().collect { result ->
 
             result.apply {
                 onSuccess { user ->
                     _state.update {
-                        it.copy(user = user)
-                    }
-                    _state.update {
                         it.copy(
+                            user = user,
                             startDestination = getStartDestinationFromRole(user.role)
                         )
                     }
@@ -114,8 +118,12 @@ class MainScreenViewModel(
                     }
                 }
 
-                onLoading {
-
+                onLoading { isLoading ->
+                    if(!isLoading){
+                        _state.update {
+                            it.copy(isReady = true)
+                        }
+                    }
                 }
             }
         }
@@ -130,5 +138,4 @@ class MainScreenViewModel(
             else -> Route.UserGraph
         }
     }
-
 }

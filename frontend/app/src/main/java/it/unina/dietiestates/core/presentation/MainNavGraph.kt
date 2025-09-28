@@ -2,10 +2,10 @@ package it.unina.dietiestates.core.presentation
 
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
@@ -39,7 +39,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewModel){
 
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     state.startDestination?.let {
         NavHost(
@@ -49,7 +49,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
             authGraph(
                 navController = navController,
                 onAuthSucceeded = { user ->
-                    viewModel.addUserFromAuth(user)
+                    viewModel.onEvent(MainScreenEvent.OnSignIn(user = user))
 
                     navController.navigate(viewModel.getStartDestinationFromRole(user.role)){
                         popUpTo<Route.AuthGraph> {
@@ -61,6 +61,7 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
 
             userScreens(
                 navController = navController,
+                startDestination = state.propertyIdFromNotification?.let { Route.PropertyDetails(it) } ?: Route.Home,
                 topBar = {
                     state.user?.let { user ->
                         TopBar(
@@ -138,12 +139,13 @@ fun MainNavGraph(navController: NavHostController, viewModel: MainScreenViewMode
 
 private fun NavGraphBuilder.userScreens(
     navController: NavHostController,
+    startDestination: Route,
     topBar: @Composable () -> Unit,
     bottomBar: @Composable (Route, () -> Unit) -> Unit
 ){
 
     navigation<Route.UserGraph>(
-        startDestination = Route.Home
+        startDestination = startDestination
     ){
         composable<Route.Home> {
             HomeScreen(
@@ -197,7 +199,16 @@ private fun NavGraphBuilder.userScreens(
         composable<Route.PropertyDetails> {
             PropertyDetailsScreen(
                 onBackNavigation = {
-                    navController.navigateUp()
+                    if(navController.previousBackStackEntry == null){
+                        navController.navigate(Route.Home){
+                            popUpTo<Route.PropertyDetails>{
+                                inclusive = true
+                            }
+                        }
+                    }
+                    else{
+                        navController.navigateUp()
+                    }
                 }
             )
         }

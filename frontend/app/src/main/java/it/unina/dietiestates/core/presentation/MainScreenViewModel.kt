@@ -45,7 +45,8 @@ class MainScreenViewModel(
             if(accessToken == null){
                 _state.update {
                     it.copy(
-                        startDestination = Route.AuthGraph
+                        startDestination = Route.AuthGraph,
+                        isReady = true
                     )
                 }
             }
@@ -67,6 +68,13 @@ class MainScreenViewModel(
             }
 
             is MainScreenEvent.OnLogout -> {
+                _state.update {
+                    it.copy(
+                        user = null,
+                        startDestination = Route.AuthGraph,
+                        isReady = true
+                    )
+                }
                 viewModelScope.launch {
                     _eventsChannel.send(event)
                 }

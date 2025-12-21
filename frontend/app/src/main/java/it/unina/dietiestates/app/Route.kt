@@ -8,9 +8,13 @@ sealed interface Route {
     @Serializable
     data object AuthGraph: Route
     @Serializable
-    data object SignIn: Route
+    data class SignIn(val passwordReset: Boolean = false): Route
     @Serializable
     data object Register: Route
+    @Serializable
+    data object ForgotPassword: Route
+    @Serializable
+    data object ResetPassword: Route
 
 
     //User
@@ -23,9 +27,11 @@ sealed interface Route {
     @Serializable
     data object Bookmarks: Route
     @Serializable
-    data object DrawSearch: Route
+    data object Search: Route
     @Serializable
     data object SearchFilters: Route
+    @Serializable
+    data object DrawSearch: Route
     @Serializable
     data class PropertyDetails(val id: Int): Route
 
@@ -61,4 +67,6 @@ sealed interface Route {
 
     @Serializable
     data object Profile: Route
+    @Serializable
+    data object ChangePassword: Route
 }

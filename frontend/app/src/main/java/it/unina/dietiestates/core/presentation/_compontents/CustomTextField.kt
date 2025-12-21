@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -38,7 +39,9 @@ fun CustomTextField(
     onValueChange: (String) -> Unit,
     placeholder: @Composable (() -> Unit),
     icon: @Composable (() -> Unit),
-    isPasswordTextField: Boolean = false
+    isPasswordTextField: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
 
     var isTextFieldFocused by rememberSaveable { mutableStateOf(false)}
@@ -47,13 +50,21 @@ fun CustomTextField(
     BasicTextField(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFFF0F0F0), ShapeDefaults.Medium)
-            .border(if(isTextFieldFocused) 1.dp else 0.dp, if(isTextFieldFocused) MaterialTheme.colorScheme.primary else Color.Transparent, ShapeDefaults.Medium)
+            .background(Color(0xFFF8F8F8), ShapeDefaults.Medium)
+            .border(
+                width = if(isTextFieldFocused) 1.5.dp else 1.dp, 
+                color = if(isTextFieldFocused) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.2f), 
+                shape = ShapeDefaults.Medium
+            )
             .height(40.dp)
-            .onFocusChanged{ isTextFieldFocused = it.isFocused},
+            .onFocusChanged{ focusState ->
+                isTextFieldFocused = focusState.isFocused
+                onFocusChanged?.invoke(focusState.isFocused)
+            },
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
+        keyboardOptions = keyboardOptions,
         visualTransformation = if(showPassword || !isPasswordTextField) VisualTransformation.None else PasswordVisualTransformation(),
         textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
         decorationBox = {

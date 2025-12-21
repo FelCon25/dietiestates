@@ -11,4 +11,9 @@ sealed interface DataError: Error {
         data object Unknown : Remote
         data class CustomError(val errorMessage: String) : Remote
     }
+
+    sealed interface Local : DataError {
+        data object DISK_FULL : Local
+        data object UNKNOWN : Local
+    }
 }

@@ -97,7 +97,7 @@ model Agent {
 }
 
 model VerificationCode {
-  code      String   @id @default(uuid())
+  code      String   @id
   userId    Int
   type      String
   createdAt DateTime @default(now())

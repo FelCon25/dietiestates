@@ -9,7 +9,7 @@ import {
   IsDecimal,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { PropertyType, PropertyCondition } from '@prisma/client';
+import { PropertyType, PropertyCondition, InsertionType } from '@prisma/client';
 
 export class SearchPropertyDto {
   // Pagination
@@ -107,6 +107,11 @@ export class SearchPropertyDto {
   type?: PropertyType;
 
   @IsOptional()
+  @IsEnum(InsertionType)
+  @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase().trim() : value))
+  insertionType?: InsertionType;
+
+  @IsOptional()
   @IsString()
   propertyCondition?: PropertyCondition;
 
@@ -143,4 +148,9 @@ export class SearchPropertyDto {
   @IsOptional()
   @IsString()
   searchText?: string; // searches in title and description
+
+  // Location search (searches in address, city, province, postalCode)
+  @IsOptional()
+  @IsString()
+  locationSearch?: string;
 }

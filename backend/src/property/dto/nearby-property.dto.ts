@@ -1,6 +1,6 @@
-import { IsNumber, Min, Max, IsOptional, IsEnum } from 'class-validator';
+import { IsNumber, Min, Max, IsOptional, IsEnum, IsBoolean, IsString } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { InsertionType } from '@prisma/client';
+import { InsertionType, PropertyType, PropertyCondition } from '@prisma/client';
 
 export class NearbyPropertyDto {
   @Type(() => Number)
@@ -25,4 +25,70 @@ export class NearbyPropertyDto {
   @IsEnum(InsertionType)
   @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase().trim() : value))
   insertionType?: InsertionType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minSurfaceArea?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxSurfaceArea?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minRooms?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxRooms?: number;
+
+  @IsOptional()
+  @IsEnum(PropertyType)
+  type?: PropertyType;
+
+  @IsOptional()
+  @IsEnum(PropertyCondition)
+  propertyCondition?: PropertyCondition;
+
+  @IsOptional()
+  @IsBoolean()
+  elevator?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  airConditioning?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  concierge?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  furnished?: boolean;
+
+  @IsOptional()
+  @IsString()
+  energyClass?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  agencyId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  agentId?: number;
 } 

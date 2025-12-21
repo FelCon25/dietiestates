@@ -74,6 +74,13 @@ export class AgencyService {
             throw new BadRequestException('This admin already has an agency');
         }
 
+        const agencyWithEmail = await this.prisma.agency.findUnique({
+            where: { email: dto.email },
+        });
+        if (agencyWithEmail) {
+            throw new BadRequestException('An agency with this email already exists');
+        }
+
         return this.prisma.agency.create({
             data: {
                 agencyAdminId: admin.userId,

@@ -6,6 +6,7 @@ import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -18,6 +19,14 @@ import it.unina.dietiestates.core.domain.EmptyResult
 import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.core.domain.ResultWithTokens
 import it.unina.dietiestates.core.domain.onSuccess
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String,
+    val logoutOtherDevices: Boolean
+)
 
 class RemoteAuthenticationDataSourceImpl(
     private val httpClient: HttpClient
@@ -77,6 +86,48 @@ class RemoteAuthenticationDataSourceImpl(
                 setBody(
                     mapOf(
                         "email" to email
+                    )
+                )
+            }
+        }
+    }
+
+    override suspend fun verifyPasswordResetCode(code: String): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post("$BASE_URL/auth/password/verify-code"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "code" to code
+                    )
+                )
+            }
+        }
+    }
+
+    override suspend fun passwordReset(code: String, newPassword: String): EmptyResult<DataError.Remote> {
+        return safeCall {
+            httpClient.post("$BASE_URL/auth/password/reset"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "code" to code,
+                        "newPassword" to newPassword
+                    )
+                )
+            }
+        }
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String, logoutOtherDevices: Boolean): EmptyResult<DataError.Remote> {
+        return safeCall<Unit> {
+            httpClient.put("$BASE_URL/auth/password/change"){
+                contentType(ContentType.Application.Json)
+                setBody(
+                    ChangePasswordRequest(
+                        currentPassword = currentPassword,
+                        newPassword = newPassword,
+                        logoutOtherDevices = logoutOtherDevices
                     )
                 )
             }

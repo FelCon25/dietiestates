@@ -1,6 +1,6 @@
-import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get, Delete, Param, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, HttpCode, HttpStatus, UseGuards, Headers, Query, Get, Delete, Param, BadRequestException, Put } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto';
+import { LoginDto, RegisterDto, PasswordResetDto, ChangePasswordDto, VerifyCodeDto } from './dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthUser, RefreshUser } from 'src/types/auth-user.interface';
@@ -70,10 +70,17 @@ export class AuthController {
         return { message: 'Password reset email sent' };
     }
 
+    @Post('password/verify-code')
+    @HttpCode(HttpStatus.OK)
+    async verifyPasswordResetCode(@Body() dto: VerifyCodeDto) {
+        await this.authService.verifyPasswordResetCode(dto.code);
+        return { message: 'Code verified successfully' };
+    }
+
     @Post('password/reset')
     @HttpCode(HttpStatus.OK)
-    async passwordReset(@Query('code') code: string, @Body('newPassword') newPassword: string) {
-        await this.authService.passwordReset(code, newPassword);
+    async passwordReset(@Body() dto: PasswordResetDto) {
+        await this.authService.passwordReset(dto.code, dto.newPassword);
         return { message: 'Password reset successfully' };
     }
 
@@ -136,5 +143,13 @@ export class AuthController {
     ) {
         const user = req.user as AuthUser;
         await this.authService.setNotificationToken(user.sessionId, notificationToken);
+    }
+
+    @UseGuards(AccessTokenGuard)
+    @Put('password/change')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
+        const user = req.user as AuthUser;
+        await this.authService.changePassword(user.userId, user.sessionId, dto.currentPassword, dto.newPassword, dto.logoutOtherDevices ?? true);
     }
 }

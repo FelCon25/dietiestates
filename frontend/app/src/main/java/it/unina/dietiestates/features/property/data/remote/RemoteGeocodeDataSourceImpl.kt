@@ -21,6 +21,7 @@ class RemoteGeocodeDataSourceImpl(
                     parameters.append("address", query)
                     parameters.append("key", BuildConfig.MAPS_API_KEY)
                     parameters.append("components", "country:it")
+                    parameters.append("language", "it")
                 }
             }
         }

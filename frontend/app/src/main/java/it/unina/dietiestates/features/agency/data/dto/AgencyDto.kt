@@ -19,7 +19,7 @@ data class AgencyDto(
     val country: String,
     val latitude: String?,
     val longitude: String?,
-    val createdAt: String,
-    val updatedAt: String,
-    val agencyAdminId: Int
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
+    val agencyAdminId: Int? = null
 )

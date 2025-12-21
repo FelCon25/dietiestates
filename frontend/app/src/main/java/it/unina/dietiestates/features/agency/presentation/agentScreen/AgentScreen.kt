@@ -39,7 +39,8 @@ import it.unina.dietiestates.ui.theme.Green80
 fun AgentScreen(
     viewModel: AgentScreenViewModel,
     topBar: @Composable () -> Unit,
-    onNewPropertyNavigation: () -> Unit
+    onNewPropertyNavigation: () -> Unit,
+    onPropertyDetailsNavigate: (Int) -> Unit
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -123,7 +124,8 @@ fun AgentScreen(
                             items(state.properties){ property ->
 
                                 PropertyItem(
-                                    property = property
+                                    property = property,
+                                    onClick = { onPropertyDetailsNavigate(property.propertyId) }
                                 )
                             }
 

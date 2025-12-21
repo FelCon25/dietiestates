@@ -73,14 +73,14 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ProfileScreen(
     viewModel: ProfileScreenViewModel = koinViewModel(),
-    onBackNavigation: () -> Unit
+    onBackNavigation: () -> Unit,
+    onNavigateToChangePassword: () -> Unit
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     var showLogoutAlert by remember { mutableStateOf(false) }
     var showDeleteSessionAlert by remember { mutableStateOf(false) }
-    var showPasswordResetAlert by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -97,12 +97,6 @@ fun ProfileScreen(
     ObserveAsEvents(viewModel.eventsChannelFlow) { event ->
         when(event){
             is ProfileScreenEvent.OnLogoutFailed -> {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(message = event.message)
-                }
-            }
-
-            is ProfileScreenEvent.OnSendPasswordResetFailed -> {
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar(message = event.message)
                 }
@@ -245,7 +239,7 @@ fun ProfileScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
                                 shape = ShapeDefaults.Medium,
                                 onClick = {
-                                    showPasswordResetAlert = true
+                                    onNavigateToChangePassword()
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -467,39 +461,6 @@ fun ProfileScreen(
                 onDismissRequest = {
                     viewModel.onEvent(ProfileScreenEvent.OnDeletingSessionCanceled)
                     showDeleteSessionAlert = false
-                }
-            )
-        }
-
-        if(showPasswordResetAlert){
-            AlertDialog(
-                text = {
-                    Text(
-                        text = "Are you sure you want to send a password reset email?",
-                        fontSize = 16.sp
-                    )
-                },
-                confirmButton = {
-                    TextButton (
-                        onClick = {
-                            viewModel.sendPasswordReset()
-                            showPasswordResetAlert = false
-                        },
-                    ) {
-                        Text("Confirm")
-                    }
-                },
-                dismissButton = {
-                    TextButton (
-                        onClick = {
-                            showPasswordResetAlert = false
-                        }
-                    ) {
-                        Text("Cancel")
-                    }
-                },
-                onDismissRequest = {
-                    showPasswordResetAlert = false
                 }
             )
         }

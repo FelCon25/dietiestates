@@ -24,7 +24,6 @@ suspend inline fun <reified T> safeCall(
     } catch(e: UnresolvedAddressException) {
         return Result.Error(DataError.Remote.NoInternet)
     } catch (e: Exception) {
-        println("kekw")
         e.printStackTrace()
         coroutineContext.ensureActive()
         return Result.Error(DataError.Remote.Unknown)
@@ -54,11 +53,24 @@ suspend inline fun <reified T> responseToResult(
     response: HttpResponse
 ): Result<T, DataError.Remote> {
     return when(response.status.value) {
+        204 -> {
+            // No Content - return Unit as success
+            @Suppress("UNCHECKED_CAST")
+            Result.Success(Unit as T)
+        }
         in 200..299 -> {
             try {
                 Result.Success(response.body<T>())
             } catch(e: NoTransformationFoundException) {
                 Result.Error(DataError.Remote.Serialization)
+            }
+        }
+        400, 404 -> {
+            try {
+                Result.Error(DataError.Remote.CustomError(response.body<ErrorResponse>().message))
+            }
+            catch (e: Exception){
+                Result.Error(DataError.Remote.Unknown)
             }
         }
         401 -> Result.Error(DataError.Remote.Unauthorized)
@@ -75,6 +87,11 @@ suspend inline fun <reified T> responseToResultWithTokens(
     response: HttpResponse
 ): ResultWithTokens<T, DataError.Remote> {
     return when(response.status.value) {
+        204 -> {
+            // No Content - return Unit as success
+            @Suppress("UNCHECKED_CAST")
+            ResultWithTokens.Success(Unit as T, response.extractTokens())
+        }
         in 200..299 -> {
             try {
                 ResultWithTokens.Success(response.body<T>(), response.extractTokens())
@@ -86,7 +103,7 @@ suspend inline fun <reified T> responseToResultWithTokens(
                 ResultWithTokens.Error(DataError.Remote.Serialization)
             }
         }
-        400 -> {
+        400, 404 -> {
             try {
                 ResultWithTokens.Error(DataError.Remote.CustomError(response.body<ErrorResponse>().message))
             }

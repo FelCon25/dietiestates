@@ -16,6 +16,12 @@ interface RemoteAuthenticationDataSource {
 
     suspend fun sendPasswordReset(email: String): EmptyResult<DataError.Remote>
 
+    suspend fun verifyPasswordResetCode(code: String): EmptyResult<DataError.Remote>
+
+    suspend fun passwordReset(code: String, newPassword: String): EmptyResult<DataError.Remote>
+
+    suspend fun changePassword(currentPassword: String, newPassword: String, logoutOtherDevices: Boolean): EmptyResult<DataError.Remote>
+
     suspend fun getMe(): Result<UserDto, DataError.Remote>
 
     suspend fun logout(): EmptyResult<DataError.Remote>

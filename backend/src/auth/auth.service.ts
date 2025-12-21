@@ -311,25 +311,55 @@ export class AuthService {
             );
         }
 
+        // Generate a 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 900000); // 15 minutes from now
+
+        // Delete any existing password reset codes for this user
+        await this.prisma.verificationCode.deleteMany({
+            where: {
+                userId: user.userId,
+                type: VerificationType.PASSWORD_RESET
+            }
+        });
 
         const verification = await this.prisma.verificationCode.create({
             data: {
+                code,
                 userId: user.userId,
                 type: VerificationType.PASSWORD_RESET,
                 expiresAt
             }
         });
 
-        const url = `${process.env.APP_ORIGIN}/password/reset?code=${verification.code}&exp=${expiresAt.getTime()}`;
         const { success, error } = await sendMail({
             to: user.email,
-            ...getPasswordResetTemplate(url),
+            ...getPasswordResetTemplate(code),
         });
 
         if (!success) {
             throw new InternalServerErrorException(`${error?.name} - ${error?.message}`);
         }
+    }
+
+    async verifyPasswordResetCode(code: string) {
+        if (!code) {
+            throw new BadRequestException('Verification code is required');
+        }
+
+        const verification = await this.prisma.verificationCode.findUnique({
+            where: {
+                code,
+                type: VerificationType.PASSWORD_RESET,
+                expiresAt: { gt: new Date() }
+            }
+        });
+
+        if (!verification) {
+            throw new NotFoundException('Invalid or expired verification code');
+        }
+
+        return { message: 'Code verified successfully' };
     }
 
     async passwordReset(code: string, newPassword: string) {
@@ -370,6 +400,41 @@ export class AuthService {
         await this.prisma.verificationCode.delete({
             where: { code: verification.code }
         });
+    }
+
+    async changePassword(userId: number, currentSessionId: number, currentPassword: string, newPassword: string, logoutOtherDevices: boolean = true) {
+        const user = await this.prisma.user.findUnique({
+            where: { userId }
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Verifica che la password corrente sia corretta
+        const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+        if (!passwordMatches) {
+            throw new BadRequestException('Current password is incorrect');
+        }
+
+        // Hash della nuova password
+        const hashedPassword = await this.hashData(newPassword);
+        await this.prisma.user.update({
+            where: { userId: user.userId },
+            data: { password: hashedPassword }
+        });
+
+        // Elimina tutte le sessioni tranne quella corrente solo se richiesto
+        if (logoutOtherDevices) {
+            await this.prisma.session.deleteMany({
+                where: { 
+                    userId: user.userId,
+                    sessionId: { not: currentSessionId }
+                }
+            });
+        }
+
+        return { message: 'Password changed successfully' };
     }
 
     async getSessions(userId: number) {

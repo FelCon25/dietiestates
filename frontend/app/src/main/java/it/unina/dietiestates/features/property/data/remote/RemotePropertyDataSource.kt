@@ -7,6 +7,11 @@ import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.property.data.dto.IsPropertySavedResponse
 import it.unina.dietiestates.features.property.data.dto.PropertyDto
 import it.unina.dietiestates.features.property.data.dto.NearbyPinDto
+import it.unina.dietiestates.features.property.data.dto.SearchResultDto
+import it.unina.dietiestates.features.property.data.dto.SavedSearchDto
+import it.unina.dietiestates.features.property.data.dto.CreateSavedSearchDto
+import it.unina.dietiestates.features.property.domain.NearbyFilters
+import it.unina.dietiestates.features.property.domain.SearchFilters
 
 interface RemotePropertyDataSource {
 
@@ -14,7 +19,9 @@ interface RemotePropertyDataSource {
 
     suspend fun getAgentProperties(): Result<List<PropertyDto>, DataError.Remote>
 
-    suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPinDto>, DataError.Remote>
+    suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, filters: NearbyFilters? = null): Result<List<NearbyPinDto>, DataError.Remote>
+
+    suspend fun searchProperties(filters: SearchFilters, page: Int, pageSize: Int): Result<SearchResultDto, DataError.Remote>
 
     suspend fun getPropertyById(propertyId: Int): Result<PropertyDto, DataError.Remote>
 
@@ -25,4 +32,13 @@ interface RemotePropertyDataSource {
     suspend fun saveProperty(propertyId: Int): EmptyResult<DataError.Remote>
 
     suspend fun unsaveProperty(propertyId: Int): EmptyResult<DataError.Remote>
+
+    // Saved searches
+    suspend fun createSavedSearch(dto: CreateSavedSearchDto): Result<SavedSearchDto, DataError.Remote>
+
+    suspend fun getSavedSearches(): Result<List<SavedSearchDto>, DataError.Remote>
+
+    suspend fun getSavedSearchById(searchId: Int): Result<SavedSearchDto, DataError.Remote>
+
+    suspend fun deleteSavedSearch(searchId: Int): EmptyResult<DataError.Remote>
 }

@@ -322,24 +322,33 @@ export class PropertyService {
       if (dto.maxPrice !== undefined) where.price.lte = dto.maxPrice;
     }
 
-    if (dto.city) {
-      where.city = { contains: dto.city, mode: 'insensitive' };
-    }
+    if (dto.locationSearch) {
+      where.OR = [
+        { city: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { province: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { address: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { postalCode: { contains: dto.locationSearch, mode: 'insensitive' } },
+      ];
+    } else {
+      if (dto.city) {
+        where.city = { contains: dto.city, mode: 'insensitive' };
+      }
 
-    if (dto.country) {
-      where.country = { contains: dto.country, mode: 'insensitive' };
-    }
+      if (dto.country) {
+        where.country = { contains: dto.country, mode: 'insensitive' };
+      }
 
-    if (dto.postalCode) {
-      where.postalCode = { contains: dto.postalCode, mode: 'insensitive' };
-    }
+      if (dto.postalCode) {
+        where.postalCode = { contains: dto.postalCode, mode: 'insensitive' };
+      }
 
-    if (dto.province) {
-      where.province = { contains: dto.province, mode: 'insensitive' };
-    }
+      if (dto.province) {
+        where.province = { contains: dto.province, mode: 'insensitive' };
+      }
 
-    if (dto.address) {
-      where.address = { contains: dto.address, mode: 'insensitive' };
+      if (dto.address) {
+        where.address = { contains: dto.address, mode: 'insensitive' };
+      }
     }
 
     if (dto.minSurfaceArea !== undefined || dto.maxSurfaceArea !== undefined) {
@@ -356,6 +365,10 @@ export class PropertyService {
 
     if (dto.type) {
       where.propertyType = dto.type;
+    }
+
+    if (dto.insertionType) {
+      where.insertionType = dto.insertionType;
     }
 
     if (dto.propertyCondition) {
@@ -391,10 +404,7 @@ export class PropertyService {
           [sortBy]: sortOrder,
         },
         include: {
-          images: {
-            where: { order: 0 },
-            take: 1,
-          },
+          images: true,
           agency: {
             omit: { agencyAdminId: true, createdAt: true, updatedAt: true },
           },
@@ -407,8 +417,7 @@ export class PropertyService {
 
     const mappedItems = items.map((item) => ({
       ...item,
-      image: item.images[0] || null,
-      images: undefined,
+      images: item.images.map(img => img.url),
     }));
 
     const hasMore = page * pageSize < total;
@@ -426,9 +435,56 @@ export class PropertyService {
   async getNearbyProperties(dto: NearbyPropertyDto) {
     const radiusMeters = (dto.radiusKm ?? 1) * 1000;
 
-    const insertionTypeClause = dto.insertionType
-      ? Prisma.sql` AND p."insertionType"::text = ${dto.insertionType} `
-      : Prisma.sql``;
+    const extraClauses: Prisma.Sql[] = [];
+
+    if (dto.insertionType) {
+      extraClauses.push(Prisma.sql` AND p."insertionType"::text = ${dto.insertionType} `);
+    }
+    if (dto.minPrice !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."price" >= ${dto.minPrice} `);
+    }
+    if (dto.maxPrice !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."price" <= ${dto.maxPrice} `);
+    }
+    if (dto.minSurfaceArea !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."surfaceArea" >= ${dto.minSurfaceArea} `);
+    }
+    if (dto.maxSurfaceArea !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."surfaceArea" <= ${dto.maxSurfaceArea} `);
+    }
+    if (dto.minRooms !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."rooms" >= ${dto.minRooms} `);
+    }
+    if (dto.maxRooms !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."rooms" <= ${dto.maxRooms} `);
+    }
+    if (dto.type) {
+      extraClauses.push(Prisma.sql` AND p."propertyType"::text = ${dto.type} `);
+    }
+    if (dto.propertyCondition) {
+      extraClauses.push(Prisma.sql` AND p."propertyCondition"::text = ${dto.propertyCondition} `);
+    }
+    if (dto.elevator !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."elevator" = ${dto.elevator} `);
+    }
+    if (dto.airConditioning !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."airConditioning" = ${dto.airConditioning} `);
+    }
+    if (dto.concierge !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."concierge" = ${dto.concierge} `);
+    }
+    if (dto.furnished !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."furnished" = ${dto.furnished} `);
+    }
+    if (dto.energyClass) {
+      extraClauses.push(Prisma.sql` AND p."energyClass" ILIKE ${'%' + dto.energyClass + '%'} `);
+    }
+    if (dto.agencyId !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."agencyId" = ${dto.agencyId} `);
+    }
+    if (dto.agentId !== undefined) {
+      extraClauses.push(Prisma.sql` AND p."agentId" = ${dto.agentId} `);
+    }
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT 
@@ -447,7 +503,7 @@ export class PropertyService {
         geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326)),
         ${radiusMeters}
       )
-      ${insertionTypeClause}
+      ${Prisma.join(extraClauses, '')}
       ORDER BY distance_m ASC
     `);
 

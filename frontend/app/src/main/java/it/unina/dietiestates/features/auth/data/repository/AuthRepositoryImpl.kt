@@ -75,6 +75,18 @@ class AuthRepositoryImpl(
         return remoteAuthenticationDataSource.sendPasswordReset(email)
     }
 
+    override suspend fun verifyPasswordResetCode(code: String): EmptyResult<DataError.Remote> {
+        return remoteAuthenticationDataSource.verifyPasswordResetCode(code)
+    }
+
+    override suspend fun passwordReset(code: String, newPassword: String): EmptyResult<DataError.Remote> {
+        return remoteAuthenticationDataSource.passwordReset(code, newPassword)
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String, logoutOtherDevices: Boolean): EmptyResult<DataError.Remote> {
+        return remoteAuthenticationDataSource.changePassword(currentPassword, newPassword, logoutOtherDevices)
+    }
+
     override suspend fun getMe(): Flow<Result<User, DataError.Remote>> {
         return flow {
             emit(Result.IsLoading(true))

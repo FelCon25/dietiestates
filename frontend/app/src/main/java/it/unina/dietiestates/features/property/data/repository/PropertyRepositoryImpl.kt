@@ -8,10 +8,17 @@ import it.unina.dietiestates.core.domain.map
 import it.unina.dietiestates.features.property.data.mappers.toNearbyPin
 import it.unina.dietiestates.features.property.data.mappers.toProperty
 import it.unina.dietiestates.features.property.data.mappers.toPropertyDto
+import it.unina.dietiestates.features.property.data.mappers.toSearchResult
+import it.unina.dietiestates.features.property.data.mappers.toSavedSearch
+import it.unina.dietiestates.features.property.data.mappers.toCreateSavedSearchDto
 import it.unina.dietiestates.features.property.data.remote.RemotePropertyDataSource
+import it.unina.dietiestates.features.property.domain.NearbyFilters
 import it.unina.dietiestates.features.property.domain.NearbyPin
 import it.unina.dietiestates.features.property.domain.Property
 import it.unina.dietiestates.features.property.domain.PropertyRepository
+import it.unina.dietiestates.features.property.domain.SearchFilters
+import it.unina.dietiestates.features.property.domain.SearchResult
+import it.unina.dietiestates.features.property.domain.SavedSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -44,9 +51,21 @@ class PropertyRepositoryImpl(
         }
     }
 
-    override suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, insertionType: String?): Result<List<NearbyPin>, DataError.Remote> {
-        return remotePropertyDataSource.getNearbyPins(latitude, longitude, radiusKm, insertionType).map {
+    override suspend fun getNearbyPins(latitude: Double, longitude: Double, radiusKm: Double, filters: NearbyFilters?): Result<List<NearbyPin>, DataError.Remote> {
+        return remotePropertyDataSource.getNearbyPins(latitude, longitude, radiusKm, filters).map {
             it.map { it.toNearbyPin() }
+        }
+    }
+
+    override suspend fun searchProperties(filters: SearchFilters, page: Int, pageSize: Int): Flow<Result<SearchResult, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.searchProperties(filters, page, pageSize).map {
+                it.toSearchResult()
+            })
+
+            emit(Result.IsLoading(false))
         }
     }
 
@@ -84,6 +103,52 @@ class PropertyRepositoryImpl(
         }
         else{
             remotePropertyDataSource.unsaveProperty(propertyId)
+        }
+    }
+
+    override suspend fun createSavedSearch(name: String, filters: SearchFilters): Flow<Result<SavedSearch, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.createSavedSearch(filters.toCreateSavedSearchDto(name)).map {
+                it.toSavedSearch()
+            })
+
+            emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun getSavedSearches(): Flow<Result<List<SavedSearch>, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.getSavedSearches().map {
+                it.map { it.toSavedSearch() }
+            })
+
+            emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun getSavedSearchById(searchId: Int): Flow<Result<SavedSearch, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.getSavedSearchById(searchId).map {
+                it.toSavedSearch()
+            })
+
+            emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun deleteSavedSearch(searchId: Int): Flow<Result<Unit, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remotePropertyDataSource.deleteSavedSearch(searchId))
+
+            emit(Result.IsLoading(false))
         }
     }
 }

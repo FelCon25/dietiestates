@@ -1,390 +1,598 @@
-import { PrismaClient, Role, PropertyType, InsertionType, PropertyCondition } from '@prisma/client';
+import { PrismaClient, PropertyType, InsertionType, PropertyCondition, Role } from '@prisma/client';
+import axios from 'axios';
 import * as bcrypt from 'bcrypt';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env from the backend directory
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const prisma = new PrismaClient();
 
-// Dati per agenzie a Roma
-const agenciesData = [
-  {
-    businessName: "Immobiliare Roma Centro",
-    legalName: "Immobiliare Roma Centro S.r.l.",
-    vatNumber: "IT12345678901",
-    email: "info@romacentro.it",
-    phone: "+39 06 1234567",
-    website: "www.romacentro.it",
-    address: "Via del Corso 123",
-    city: "Roma",
-    postalCode: "00186",
-    province: "RM",
-    country: "Italia",
-    latitude: 41.9028,
-    longitude: 12.4964
-  },
-  {
-    businessName: "Casa Roma Immobiliare",
-    legalName: "Casa Roma Immobiliare S.r.l.",
-    vatNumber: "IT23456789012",
-    email: "contatti@casaroma.it",
-    phone: "+39 06 2345678",
-    website: "www.casaroma.it",
-    address: "Piazza Navona 45",
-    city: "Roma",
-    postalCode: "00186",
-    province: "RM",
-    country: "Italia",
-    latitude: 41.8995,
-    longitude: 12.4732
-  },
-  {
-    businessName: "Trastevere Properties",
-    legalName: "Trastevere Properties S.r.l.",
-    vatNumber: "IT34567890123",
-    email: "info@trastevereproperties.it",
-    phone: "+39 06 3456789",
-    website: "www.trastevereproperties.it",
-    address: "Via di Trastevere 78",
-    city: "Roma",
-    postalCode: "00153",
-    province: "RM",
-    country: "Italia",
-    latitude: 41.8897,
-    longitude: 12.4695
-  },
-  {
-    businessName: "Villa Borghese Real Estate",
-    legalName: "Villa Borghese Real Estate S.r.l.",
-    vatNumber: "IT45678901234",
-    email: "info@villa-borghese.it",
-    phone: "+39 06 4567890",
-    website: "www.villa-borghese.it",
-    address: "Via Veneto 156",
-    city: "Roma",
-    postalCode: "00187",
-    province: "RM",
-    country: "Italia",
-    latitude: 41.9092,
-    longitude: 12.4880
-  },
-  {
-    businessName: "Testaccio Immobiliare",
-    legalName: "Testaccio Immobiliare S.r.l.",
-    vatNumber: "IT56789012345",
-    email: "info@testaccioimmobiliare.it",
-    phone: "+39 06 5678901",
-    website: "www.testaccioimmobiliare.it",
-    address: "Via Marmorata 234",
-    city: "Roma",
-    postalCode: "00153",
-    province: "RM",
-    country: "Italia",
-    latitude: 41.8789,
-    longitude: 12.4778
+// Google Maps API Configuration
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const GEOCODING_API_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
+
+// Delay between API calls to avoid rate limiting (in milliseconds)
+const API_DELAY = 150;
+
+// Configuration
+const TARGET_PROPERTIES = 1200;
+const ROME_PROPERTIES = 50;
+
+// Italian cities with coordinates
+const ITALIAN_CITIES = [
+  { name: 'Rome', nameLat: 'Roma', province: 'Rome', provinceLat: 'Roma', lat: 41.9028, lng: 12.4964, weight: ROME_PROPERTIES },
+  { name: 'Milan', nameLat: 'Milano', province: 'Milan', provinceLat: 'Milano', lat: 45.4642, lng: 9.1900, weight: 150 },
+  { name: 'Naples', nameLat: 'Napoli', province: 'Naples', provinceLat: 'Napoli', lat: 40.8518, lng: 14.2681, weight: 120 },
+  { name: 'Turin', nameLat: 'Torino', province: 'Turin', provinceLat: 'Torino', lat: 45.0703, lng: 7.6869, weight: 100 },
+  { name: 'Florence', nameLat: 'Firenze', province: 'Florence', provinceLat: 'Firenze', lat: 43.7696, lng: 11.2558, weight: 100 },
+  { name: 'Bologna', nameLat: 'Bologna', province: 'Bologna', provinceLat: 'Bologna', lat: 44.4949, lng: 11.3426, weight: 100 },
+  { name: 'Venice', nameLat: 'Venezia', province: 'Venice', provinceLat: 'Venezia', lat: 45.4408, lng: 12.3155, weight: 80 },
+  { name: 'Palermo', nameLat: 'Palermo', province: 'Palermo', provinceLat: 'Palermo', lat: 38.1157, lng: 13.3615, weight: 100 },
+  { name: 'Genoa', nameLat: 'Genova', province: 'Genoa', provinceLat: 'Genova', lat: 44.4056, lng: 8.9463, weight: 80 },
+  { name: 'Bari', nameLat: 'Bari', province: 'Bari', provinceLat: 'Bari', lat: 41.1171, lng: 16.8719, weight: 80 },
+  { name: 'Catania', nameLat: 'Catania', province: 'Catania', provinceLat: 'Catania', lat: 37.5079, lng: 15.0830, weight: 80 },
+  { name: 'Verona', nameLat: 'Verona', province: 'Verona', provinceLat: 'Verona', lat: 45.4384, lng: 10.9916, weight: 70 },
+  { name: 'Padua', nameLat: 'Padova', province: 'Padua', provinceLat: 'Padova', lat: 45.4064, lng: 11.8768, weight: 60 },
+  { name: 'Trieste', nameLat: 'Trieste', province: 'Trieste', provinceLat: 'Trieste', lat: 45.6495, lng: 13.7768, weight: 50 },
+];
+
+// Common Italian street names
+const STREET_NAMES = [
+  'Via Roma', 'Via Milano', 'Via Torino', 'Via Napoli', 'Via Venezia',
+  'Via Dante', 'Via Manzoni', 'Via Garibaldi', 'Via Cavour', 'Via Verdi',
+  'Corso Italia', 'Corso Vittorio Emanuele', 'Corso Garibaldi',
+  'Piazza della Repubblica', 'Piazza San Marco', 'Piazza Duomo',
+  'Via dei Mille', 'Via XX Settembre', 'Via IV Novembre', 'Via Nazionale',
+  'Viale Europa', 'Viale della Libertà', 'Via Kennedy', 'Via Churchill',
+];
+
+// Agency names (in English)
+const AGENCY_NAMES = [
+  'Luxury Homes Agency',
+  'City Real Estate',
+  'Prime Properties Italia',
+  'Elite Estates',
+  'Dream Home Realty',
+  'Metropolitan Properties',
+  'Golden Key Real Estate',
+  'Prestige Homes',
+  'Capital Real Estate',
+  'Urban Living Properties',
+];
+
+// First and last names for agents (in English)
+const FIRST_NAMES = [
+  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
+  'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica',
+  'Thomas', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven',
+  'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley',
+];
+
+const LAST_NAMES = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+  'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor',
+  'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White', 'Harris', 'Clark',
+];
+
+interface GeocodeResult {
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  route: string;
+  streetNumber: string;
+}
+
+// Delay function
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Geocode an address using Google Maps API
+async function geocodeAddress(address: string, retries = 3): Promise<GeocodeResult | null> {
+  try {
+    const response = await axios.get(GEOCODING_API_URL, {
+      params: {
+        address: address,
+        key: GOOGLE_MAPS_API_KEY,
+        language: 'en',
+      },
+    });
+
+    if (response.data.status === 'OK' && response.data.results.length > 0) {
+      const result = response.data.results[0];
+      const components = result.address_components;
+
+      // Extract address components like in frontend AddressMappers.kt
+      const getComponent = (type: string) => {
+        const comp = components.find((c: any) => c.types.includes(type));
+        return comp ? comp.long_name : '';
+      };
+
+      const route = getComponent('route');
+      const streetNumber = getComponent('street_number');
+      
+      // City extraction (locality or administrative_area_level_3)
+      const city = getComponent('locality') || getComponent('administrative_area_level_3');
+      
+      // Province extraction and cleaning (like in AddressMappers.kt)
+      let provinceLong = getComponent('administrative_area_level_2');
+      const provinceClean = provinceLong
+        .replace('Province of ', '')
+        .replace('Provincia di ', '')
+        .replace('Metropolitan City of ', '')
+        .replace('Città metropolitana di ', '');
+
+      const postalCode = getComponent('postal_code');
+
+      return {
+        address: `${route} ${streetNumber}`.trim(),
+        city: city,
+        province: provinceClean,
+        postalCode: postalCode || '00100',
+        country: 'Italy',
+        latitude: result.geometry.location.lat,
+        longitude: result.geometry.location.lng,
+        route: route,
+        streetNumber: streetNumber,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Geocoding failed, retrying... (${retries} retries left)`);
+      await delay(1000);
+      return geocodeAddress(address, retries - 1);
+    }
+    console.error('Geocoding error:', error.message);
+    return null;
   }
-];
-
-// Dati per agenti
-const agentsData = [
-  { firstName: "Marco", lastName: "Rossi", email: "marco.rossi@romacentro.it", phone: "+39 333 1111111" },
-  { firstName: "Giulia", lastName: "Bianchi", email: "giulia.bianchi@romacentro.it", phone: "+39 333 1111112" },
-  { firstName: "Alessandro", lastName: "Verdi", email: "alessandro.verdi@casaroma.it", phone: "+39 333 2222221" },
-  { firstName: "Francesca", lastName: "Neri", email: "francesca.neri@casaroma.it", phone: "+39 333 2222222" },
-  { firstName: "Luca", lastName: "Ferrari", email: "luca.ferrari@trastevereproperties.it", phone: "+39 333 3333331" },
-  { firstName: "Elena", lastName: "Romano", email: "elena.romano@trastevereproperties.it", phone: "+39 333 3333332" },
-  { firstName: "Diego", lastName: "Conti", email: "diego.conti@villa-borghese.it", phone: "+39 333 4444441" },
-  { firstName: "Sofia", lastName: "Ricci", email: "sofia.ricci@villa-borghese.it", phone: "+39 333 4444442" },
-  { firstName: "Andrea", lastName: "Moretti", email: "andrea.moretti@testaccioimmobiliare.it", phone: "+39 333 5555551" },
-  { firstName: "Chiara", lastName: "Galli", email: "chiara.galli@testaccioimmobiliare.it", phone: "+39 333 5555552" }
-];
-
-// Indirizzi realistici a Roma
-const romeAddresses = [
-  { address: "Via del Corso 45", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.9028, longitude: 12.4964 },
-  { address: "Piazza Navona 12", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8995, longitude: 12.4732 },
-  { address: "Via di Trastevere 89", city: "Roma", postalCode: "00153", province: "RM", latitude: 41.8897, longitude: 12.4695 },
-  { address: "Via Veneto 67", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9092, longitude: 12.4880 },
-  { address: "Via Marmorata 123", city: "Roma", postalCode: "00153", province: "RM", latitude: 41.8789, longitude: 12.4778 },
-  { address: "Via del Babuino 34", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9062, longitude: 12.4828 },
-  { address: "Piazza di Spagna 8", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9058, longitude: 12.4822 },
-  { address: "Via dei Condotti 56", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9048, longitude: 12.4812 },
-  { address: "Via del Tritone 78", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9022, longitude: 12.4856 },
-  { address: "Via Nazionale 234", city: "Roma", postalCode: "00184", province: "RM", latitude: 41.9008, longitude: 12.4923 },
-  { address: "Via Cavour 145", city: "Roma", postalCode: "00184", province: "RM", latitude: 41.8965, longitude: 12.4945 },
-  { address: "Via del Quirinale 67", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.8992, longitude: 12.4867 },
-  { address: "Via del Pantheon 23", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8986, longitude: 12.4769 },
-  { address: "Via della Rotonda 45", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8986, longitude: 12.4769 },
-  { address: "Via del Seminario 89", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8978, longitude: 12.4778 },
-  { address: "Via del Gesù 12", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8967, longitude: 12.4790 },
-  { address: "Via del Corso Vittorio Emanuele 156", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8967, longitude: 12.4790 },
-  { address: "Via del Teatro di Marcello 34", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8923, longitude: 12.4812 },
-  { address: "Via del Portico d'Ottavia 78", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8923, longitude: 12.4812 },
-  { address: "Via del Ghetto 45", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8912, longitude: 12.4778 },
-  { address: "Via Arenula 123", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8901, longitude: 12.4756 },
-  { address: "Via del Teatro Argentina 67", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8956, longitude: 12.4767 },
-  { address: "Via di Torre Argentina 89", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.8956, longitude: 12.4767 },
-  { address: "Via del Corso 234", city: "Roma", postalCode: "00186", province: "RM", latitude: 41.9028, longitude: 12.4964 },
-  { address: "Via del Babuino 156", city: "Roma", postalCode: "00187", province: "RM", latitude: 41.9062, longitude: 12.4828 }
-];
-
-// Indirizzi in altre città italiane
-const otherCitiesAddresses = [
-  { address: "Via Montenapoleone 12", city: "Milano", postalCode: "20121", province: "MI", latitude: 45.4692, longitude: 9.1954 },
-  { address: "Corso Buenos Aires 234", city: "Milano", postalCode: "20124", province: "MI", latitude: 45.4728, longitude: 9.2045 },
-  { address: "Via Torino 45", city: "Milano", postalCode: "20123", province: "MI", latitude: 45.4654, longitude: 9.1876 },
-  { address: "Piazza San Marco 67", city: "Venezia", postalCode: "30124", province: "VE", latitude: 45.4342, longitude: 12.3388 },
-  { address: "Via XX Settembre 89", city: "Firenze", postalCode: "50129", province: "FI", latitude: 43.7696, longitude: 11.2558 },
-  { address: "Via Roma 123", city: "Napoli", postalCode: "80132", province: "NA", latitude: 40.8518, longitude: 14.2681 },
-  { address: "Corso Umberto I 45", city: "Napoli", postalCode: "80138", province: "NA", latitude: 40.8518, longitude: 14.2681 }
-];
-
-// Descrizioni per le proprietà
-const propertyDescriptions = [
-  "Appartamento di prestigio nel cuore di Roma, completamente ristrutturato con finiture di alta qualità. Zona servita da tutti i mezzi pubblici.",
-  "Elegante appartamento con vista panoramica sulla città eterna. Caratteristiche moderne e comfort garantiti.",
-  "Casa storica ristrutturata mantenendo il fascino dell'architettura romana. Giardino privato e terrazza.",
-  "Appartamento luminoso e spazioso, ideale per famiglie. Zona tranquilla ma ben collegata al centro.",
-  "Loft moderno in edificio di design, perfetto per giovani professionisti. Arredamento contemporaneo.",
-  "Villa indipendente con giardino e piscina. Privacy garantita e spazi ampi per tutta la famiglia.",
-  "Appartamento con terrazza panoramica, vista mozzafiato sui monumenti storici di Roma.",
-  "Casa con carattere, arredata con gusto e attenzione ai dettagli. Zona residenziale di prestigio.",
-  "Appartamento di nuova costruzione con tutti i comfort moderni. Efficienza energetica di classe A.",
-  "Casa storica con affreschi originali, perfetta per chi ama l'arte e la storia romana."
-];
-
-const energyClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-
-async function createAgencyAdmin(email: string, firstName: string, lastName: string) {
-  const hashedPassword = await bcrypt.hash('password123', 10);
-  
-  const user = await prisma.user.create({
-    data: {
-      email,
-      firstName,
-      lastName,
-      password: hashedPassword,
-      role: Role.ADMIN_AGENCY,
-      phone: `+39 333 ${Math.floor(Math.random() * 9000000) + 1000000}`
-    }
-  });
-
-  const agencyAdmin = await prisma.agencyAdmin.create({
-    data: { userId: user.userId }
-  });
-
-  return { user, agencyAdmin };
 }
 
-async function createAgency(agencyAdminId: number, agencyData: any) {
-  return await prisma.agency.create({
-    data: {
-      agencyAdminId,
-      ...agencyData
-    }
-  });
+// Generate a random street address
+function generateStreetAddress(city: string): string {
+  const street = STREET_NAMES[Math.floor(Math.random() * STREET_NAMES.length)];
+  const number = Math.floor(Math.random() * 300) + 1;
+  return `${street} ${number}, ${city}, Italy`;
 }
 
-async function createAgent(agencyId: number, agentData: any) {
-  const hashedPassword = await bcrypt.hash('password123', 10);
-  
-  const user = await prisma.user.create({
-    data: {
-      email: agentData.email,
-      firstName: agentData.firstName,
-      lastName: agentData.lastName,
-      password: hashedPassword,
-      role: Role.AGENT,
-      phone: agentData.phone
-    }
-  });
+// Generate property description based on type
+function generatePropertyDescription(propertyType: PropertyType, insertionType: InsertionType): string {
+  const descriptions: Record<PropertyType, Record<InsertionType, string[]>> = {
+    APARTMENT: {
+      SALE: [
+        'Spacious apartment with modern amenities in a prime location. Features include hardwood floors, updated kitchen, and plenty of natural light.',
+        'Beautiful apartment offering comfort and style. Recently renovated with high-quality finishes and excellent layout.',
+        'Stunning apartment in the heart of the city. Perfect for families or professionals seeking a comfortable urban living space.',
+        'Elegant apartment with contemporary design. Includes balcony, storage space, and access to building amenities.',
+      ],
+      RENT: [
+        'Comfortable apartment available for rent. Ideal location with easy access to public transportation and local amenities.',
+        'Well-maintained apartment perfect for professionals or small families. Bright rooms and functional layout.',
+        'Charming apartment in a quiet neighborhood. Features include modern appliances and convenient access to shops.',
+        'Lovely apartment with great natural light. Located in a vibrant area with restaurants and parks nearby.',
+      ],
+      SHORT_TERM: [
+        'Modern apartment available for short-term rental. Fully furnished with all necessary amenities for a comfortable stay.',
+        'Cozy apartment perfect for temporary stays. Well-connected to city center and main attractions.',
+        'Stylish apartment ideal for business travelers or tourists. Includes high-speed internet and modern furnishings.',
+      ],
+      VACATION: [
+        'Holiday apartment in excellent location. Perfect base for exploring the city and enjoying local culture.',
+        'Vacation rental with comfortable accommodations. Close to tourist attractions and dining options.',
+        'Charming holiday apartment with all comforts of home. Ideal for families or couples seeking a memorable vacation.',
+      ],
+    },
+    VILLA: {
+      SALE: [
+        'Magnificent villa with stunning architecture and luxurious finishes. Features spacious gardens, swimming pool, and breathtaking views.',
+        'Exclusive villa offering privacy and elegance. Includes multiple bedrooms, entertainment areas, and premium amenities.',
+        'Prestigious villa in sought-after location. Boasts elegant interiors, landscaped grounds, and modern conveniences.',
+        'Stunning villa with exceptional attention to detail. Perfect for those seeking luxury living in a serene environment.',
+      ],
+      RENT: [
+        'Impressive villa available for long-term rental. Features expansive living spaces, private garden, and premium finishes.',
+        'Elegant villa in prestigious area. Ideal for families seeking space, comfort, and exclusive amenities.',
+        'Beautiful villa with refined interiors. Includes outdoor spaces perfect for entertaining and relaxation.',
+      ],
+      SHORT_TERM: [
+        'Luxury villa available for short-term stays. Perfect for special occasions or executive accommodation.',
+        'Exclusive villa rental with full amenities. Ideal for hosting events or enjoying a premium living experience.',
+      ],
+      VACATION: [
+        'Spectacular holiday villa with pool and panoramic views. Perfect retreat for relaxation and entertainment.',
+        'Dream vacation villa in idyllic setting. Features include outdoor dining area, barbecue, and lush gardens.',
+        'Exquisite holiday villa offering ultimate comfort and privacy. Ideal for memorable family vacations.',
+      ],
+    },
+    STUDIO: {
+      SALE: [
+        'Efficient studio apartment with smart layout. Perfect for first-time buyers or investment opportunity.',
+        'Modern studio in excellent location. Features contemporary design and all essential amenities.',
+        'Compact studio with great potential. Ideal for singles or as a rental investment property.',
+      ],
+      RENT: [
+        'Comfortable studio apartment for rent. Perfect for students or young professionals starting their career.',
+        'Well-designed studio with efficient use of space. Located in convenient area with good transport links.',
+        'Cozy studio in vibrant neighborhood. Includes modern appliances and affordable living solution.',
+      ],
+      SHORT_TERM: [
+        'Functional studio for short-term accommodation. Fully equipped with everything needed for comfortable stay.',
+        'Modern studio ideal for business trips or short visits. Centrally located with excellent amenities.',
+      ],
+      VACATION: [
+        'Charming studio perfect for solo travelers or couples. Great location for exploring the city.',
+        'Comfortable vacation studio with all essentials. Affordable option in prime tourist area.',
+      ],
+    },
+    GARAGE: {
+      SALE: [
+        'Secure garage in prime location. Perfect for vehicle storage or additional space needs.',
+        'Well-maintained garage with easy access. Ideal investment or practical solution for parking.',
+        'Spacious garage in convenient location. Suitable for car storage or small workshop use.',
+      ],
+      RENT: [
+        'Garage available for rent in central area. Secure parking solution with good access.',
+        'Practical garage space for monthly rental. Protected storage for vehicles or equipment.',
+      ],
+      SHORT_TERM: [
+        'Garage available for short-term rental. Convenient temporary parking solution.',
+      ],
+      VACATION: [
+        'Secure garage space for vacation parking needs. Safe storage during your stay.',
+      ],
+    },
+  };
 
-  const agent = await prisma.agent.create({
-    data: {
-      userId: user.userId,
-      agencyId
-    }
-  });
-
-  return { user, agent };
+  const options = descriptions[propertyType][insertionType];
+  return options[Math.floor(Math.random() * options.length)];
 }
 
-function getRandomProperty() {
-  const propertyTypes = Object.values(PropertyType);
-  const insertionTypes = Object.values(InsertionType);
-  const propertyConditions = Object.values(PropertyCondition);
-  
-  const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
-  const insertionType = insertionTypes[Math.floor(Math.random() * insertionTypes.length)];
-  const propertyCondition = propertyConditions[Math.floor(Math.random() * propertyConditions.length)];
-  
-  // Prezzi basati sul tipo di inserzione e proprietà
-  let basePrice = 0;
+// Generate random property data
+function generateRandomPropertyData(propertyType: PropertyType, insertionType: InsertionType) {
+  const energyClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+  const conditions = [PropertyCondition.NEW, PropertyCondition.GOOD_CONDITION, PropertyCondition.TO_RENOVATE];
+
+  // Adjust values based on property type
+  let surfaceArea: number, rooms: number, floors: number, priceMultiplier: number;
+
+  switch (propertyType) {
+    case PropertyType.VILLA:
+      surfaceArea = Math.floor(Math.random() * 250) + 150; // 150-400 sqm
+      rooms = Math.floor(Math.random() * 5) + 4; // 4-8 rooms
+      floors = Math.floor(Math.random() * 2) + 2; // 2-3 floors
+      priceMultiplier = 3;
+      break;
+    case PropertyType.APARTMENT:
+      surfaceArea = Math.floor(Math.random() * 100) + 50; // 50-150 sqm
+      rooms = Math.floor(Math.random() * 4) + 2; // 2-5 rooms
+      floors = Math.floor(Math.random() * 3) + 1; // 1-3 floors
+      priceMultiplier = 1.5;
+      break;
+    case PropertyType.STUDIO:
+      surfaceArea = Math.floor(Math.random() * 25) + 25; // 25-50 sqm
+      rooms = 1;
+      floors = 1;
+      priceMultiplier = 1;
+      break;
+    case PropertyType.GARAGE:
+      surfaceArea = Math.floor(Math.random() * 20) + 15; // 15-35 sqm
+      rooms = 1;
+      floors = 1;
+      priceMultiplier = 0.3;
+      break;
+    default:
+      surfaceArea = 80;
+      rooms = 3;
+      floors = 1;
+      priceMultiplier = 1;
+  }
+
+  // Calculate price based on insertion type
+  let basePrice: number;
   if (insertionType === InsertionType.SALE) {
-    basePrice = propertyType === PropertyType.VILLA ? 800000 : 
-                propertyType === PropertyType.APARTMENT ? 400000 :
-                propertyType === PropertyType.STUDIO ? 200000 : 50000;
+    basePrice = surfaceArea * (Math.random() * 2000 + 2000) * priceMultiplier; // €2000-4000 per sqm
   } else if (insertionType === InsertionType.RENT) {
-    basePrice = propertyType === PropertyType.VILLA ? 2000 : 
-                propertyType === PropertyType.APARTMENT ? 1200 :
-                propertyType === PropertyType.STUDIO ? 800 : 200;
+    basePrice = surfaceArea * (Math.random() * 10 + 10) * priceMultiplier; // €10-20 per sqm/month
   } else if (insertionType === InsertionType.SHORT_TERM) {
-    basePrice = propertyType === PropertyType.VILLA ? 300 : 
-                propertyType === PropertyType.APARTMENT ? 150 :
-                propertyType === PropertyType.STUDIO ? 100 : 50;
-  } else { // VACATION
-    basePrice = propertyType === PropertyType.VILLA ? 500 : 
-                propertyType === PropertyType.APARTMENT ? 250 :
-                propertyType === PropertyType.STUDIO ? 150 : 80;
+    basePrice = surfaceArea * (Math.random() * 20 + 30) * priceMultiplier; // €30-50 per sqm/month
+  } else {
+    basePrice = surfaceArea * (Math.random() * 15 + 25) * priceMultiplier; // €25-40 per sqm/week
   }
-  
-  const price = basePrice + Math.floor(Math.random() * basePrice * 0.5);
-  
-  // Superficie basata sul tipo di proprietà
-  let baseSurface = 0;
-  if (propertyType === PropertyType.VILLA) {
-    baseSurface = 150 + Math.floor(Math.random() * 200);
-  } else if (propertyType === PropertyType.APARTMENT) {
-    baseSurface = 60 + Math.floor(Math.random() * 120);
-  } else if (propertyType === PropertyType.STUDIO) {
-    baseSurface = 25 + Math.floor(Math.random() * 35);
-  } else { // GARAGE
-    baseSurface = 15 + Math.floor(Math.random() * 25);
-  }
-  
-  // Numero di stanze basato sulla superficie
-  const rooms = propertyType === PropertyType.STUDIO ? 1 : 
-                propertyType === PropertyType.GARAGE ? 0 :
-                Math.floor(baseSurface / 25) + Math.floor(Math.random() * 3);
-  
+
   return {
-    propertyType,
-    insertionType,
-    propertyCondition,
-    price,
-    surfaceArea: baseSurface,
+    surfaceArea,
     rooms,
-    floors: Math.floor(Math.random() * 5) + 1,
-    elevator: Math.random() > 0.5,
+    floors,
+    price: Math.round(basePrice),
     energyClass: energyClasses[Math.floor(Math.random() * energyClasses.length)],
+    propertyCondition: conditions[Math.floor(Math.random() * conditions.length)],
+    elevator: Math.random() > 0.5,
     concierge: Math.random() > 0.7,
-    airConditioning: Math.random() > 0.3,
-    furnished: Math.random() > 0.6
+    airConditioning: Math.random() > 0.6,
+    furnished: Math.random() > 0.5,
   };
 }
 
-async function createProperty(agencyId: number, agentId: number, addressData: any) {
-  const propertyData = getRandomProperty();
-  const description = propertyDescriptions[Math.floor(Math.random() * propertyDescriptions.length)];
-  
-  return await prisma.property.create({
-    data: {
-      agencyId,
-      agentId,
-      description,
-      price: propertyData.price,
-      surfaceArea: propertyData.surfaceArea,
-      rooms: propertyData.rooms,
-      floors: propertyData.floors,
-      elevator: propertyData.elevator,
-      energyClass: propertyData.energyClass,
-      concierge: propertyData.concierge,
-      airConditioning: propertyData.airConditioning,
-      insertionType: propertyData.insertionType,
-      propertyType: propertyData.propertyType,
-      address: addressData.address,
-      city: addressData.city,
-      postalCode: addressData.postalCode,
-      province: addressData.province,
-      country: "Italia",
-      latitude: addressData.latitude,
-      longitude: addressData.longitude,
-      furnished: propertyData.furnished,
-      propertyCondition: propertyData.propertyCondition
+// Create agencies
+async function createAgencies() {
+  console.log('\n📍 Creating agencies...');
+  const agencies = [];
+  const timestamp = Date.now();
+
+  for (let i = 0; i < 10; i++) {
+    const city = ITALIAN_CITIES[i % ITALIAN_CITIES.length];
+    const agencyName = AGENCY_NAMES[i];
+    
+    // Generate random agency address
+    const agencyAddress = generateStreetAddress(city.nameLat);
+    console.log(`  Geocoding agency: ${agencyName} in ${city.name}...`);
+    
+    const geocoded = await geocodeAddress(agencyAddress);
+    await delay(API_DELAY);
+
+    if (!geocoded) {
+      console.log(`  ⚠️  Failed to geocode ${agencyName}, using approximate coordinates`);
     }
-  });
+
+    // Create agency admin user
+    const hashedPassword = await bcrypt.hash('TestPassword123!', 10);
+    const email = `${agencyName.toLowerCase().replace(/\s+/g, '.')}.${timestamp}@test.com`;
+    
+    try {
+      const user = await prisma.user.create({
+        data: {
+          email: email,
+          password: hashedPassword,
+          firstName: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
+          lastName: LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)],
+          phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
+          role: Role.ADMIN_AGENCY,
+        },
+      });
+
+      // Create AgencyAdmin first
+      await prisma.agencyAdmin.create({
+        data: {
+          userId: user.userId,
+        },
+      });
+
+      // Then create the Agency
+      const agency = await prisma.agency.create({
+        data: {
+          businessName: agencyName,
+          legalName: `${agencyName} S.r.l.`,
+          vatNumber: `IT${Math.floor(Math.random() * 90000000000) + 10000000000}`,
+          email: email,
+          phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
+          address: geocoded?.address || `${STREET_NAMES[0]} 1`,
+          city: geocoded?.city || city.name,
+          postalCode: geocoded?.postalCode || '00100',
+          province: geocoded?.province || city.province,
+          country: 'Italy',
+          latitude: geocoded?.latitude || city.lat,
+          longitude: geocoded?.longitude || city.lng,
+          agencyAdminId: user.userId,
+        },
+      });
+
+      agencies.push({ agency, city });
+      console.log(`  ✅ Created agency: ${agencyName} in ${city.name}`);
+    } catch (error) {
+      console.error(`  ❌ Failed to create agency ${agencyName}:`, error.message);
+    }
+  }
+
+  return agencies;
 }
 
-async function main() {
-  console.log('🌱 Inizio popolamento database...');
-  
-  try {
-    // Pulisco i dati esistenti (in ordine inverso per le foreign keys)
-    console.log('🧹 Pulizia dati esistenti...');
-    await prisma.propertyImage.deleteMany();
-    await prisma.property.deleteMany();
-    await prisma.agent.deleteMany();
-    await prisma.assistant.deleteMany();
-    await prisma.agency.deleteMany();
-    await prisma.agencyAdmin.deleteMany();
-    await prisma.userNotificationPreference.deleteMany();
-    await prisma.session.deleteMany();
-    await prisma.user.deleteMany();
-    
-    console.log('👥 Creazione agency admins e agenzie...');
-    const agencies = [];
-    
-    for (let i = 0; i < agenciesData.length; i++) {
-      const agencyData = agenciesData[i];
-      const adminEmail = `admin${i + 1}@${agencyData.email.split('@')[1]}`;
-      const adminFirstName = `Admin${i + 1}`;
-      const adminLastName = agencyData.businessName.split(' ')[0];
-      
-      const { user: adminUser, agencyAdmin } = await createAgencyAdmin(adminEmail, adminFirstName, adminLastName);
-      const agency = await createAgency(agencyAdmin.userId, agencyData);
-      agencies.push({ agency, adminUser });
-      
-      console.log(`✅ Creata agenzia: ${agency.businessName}`);
-    }
-    
-    console.log('👨‍💼 Creazione agenti...');
-    const agents = [];
-    let agentIndex = 0;
-    
-    for (const { agency } of agencies) {
-      // 2 agenti per agenzia
-      for (let j = 0; j < 2; j++) {
-        const agentData = agentsData[agentIndex];
-        const { user: agentUser, agent } = await createAgent(agency.agencyId, agentData);
-        agents.push({ agent, agentUser, agencyId: agency.agencyId });
-        agentIndex++;
-        
-        console.log(`✅ Creato agente: ${agentUser.firstName} ${agentUser.lastName} per ${agency.businessName}`);
+// Create agents
+async function createAgents(agencies: any[]) {
+  console.log('\n👥 Creating agents...');
+  const agents = [];
+  const timestamp = Date.now();
+
+  for (const { agency, city } of agencies) {
+    const numAgents = Math.floor(Math.random() * 2) + 2; // 2-3 agents per agency
+
+    for (let i = 0; i < numAgents; i++) {
+      const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+      const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+      const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${timestamp}.${agency.agencyId}.${i}@test.com`;
+      const hashedPassword = await bcrypt.hash('TestPassword123!', 10);
+
+      try {
+        const user = await prisma.user.create({
+          data: {
+            email: email,
+            password: hashedPassword,
+            firstName: firstName,
+            lastName: lastName,
+            phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
+            role: Role.AGENT,
+          },
+        });
+
+        await prisma.agent.create({
+          data: {
+            userId: user.userId,
+            agencyId: agency.agencyId,
+          },
+        });
+
+        agents.push({ userId: user.userId, agencyId: agency.agencyId, city });
+        console.log(`  ✅ Created agent: ${firstName} ${lastName} for ${agency.businessName}`);
+      } catch (error) {
+        console.error(`  ❌ Failed to create agent:`, error.message);
       }
     }
-    
-    console.log('🏠 Creazione proprietà...');
-    const allAddresses = [...romeAddresses, ...otherCitiesAddresses];
-    let propertyCount = 0;
-    
-    for (const { agent, agencyId } of agents) {
-      // 8-15 proprietà per agente
-      const numProperties = 8 + Math.floor(Math.random() * 8);
+  }
+
+  return agents;
+}
+
+// Create properties
+async function createProperties(agents: any[]) {
+  console.log('\n🏠 Creating properties...');
+  const propertyTypes = [PropertyType.APARTMENT, PropertyType.VILLA, PropertyType.STUDIO, PropertyType.GARAGE];
+  const insertionTypes = [InsertionType.SALE, InsertionType.RENT, InsertionType.SHORT_TERM, InsertionType.VACATION];
+
+  let createdCount = 0;
+  let failedCount = 0;
+
+  // Calculate number of properties per city based on weight
+  const propertyDistribution: Array<{ city: any; count: number }> = [];
+  const totalWeight = ITALIAN_CITIES.reduce((sum, city) => sum + city.weight, 0);
+
+  for (const city of ITALIAN_CITIES) {
+    const count = Math.round((city.weight / totalWeight) * TARGET_PROPERTIES);
+    propertyDistribution.push({ city, count });
+  }
+
+  for (const { city, count } of propertyDistribution) {
+    console.log(`\n  📍 Creating ${count} properties in ${city.name}...`);
+
+    for (let i = 0; i < count; i++) {
+      const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
+      const insertionType = insertionTypes[Math.floor(Math.random() * insertionTypes.length)];
+
+      // Select a random agent from the same city or any if not available
+      const cityAgents = agents.filter(a => a.city.name === city.name);
+      const agent = cityAgents.length > 0 
+        ? cityAgents[Math.floor(Math.random() * cityAgents.length)]
+        : agents[Math.floor(Math.random() * agents.length)];
+
+      // Generate random address
+      const streetAddress = generateStreetAddress(city.nameLat);
       
-      for (let k = 0; k < numProperties; k++) {
-        const addressData = allAddresses[Math.floor(Math.random() * allAddresses.length)];
-        
-        try {
-          await createProperty(agencyId, agent.userId, addressData);
-          propertyCount++;
-          
-          if (propertyCount % 50 === 0) {
-            console.log(`✅ Create ${propertyCount} proprietà...`);
-          }
-        } catch (error) {
-          console.error(`❌ Errore creando proprietà: ${error.message}`);
+      // Geocode the address
+      const geocoded = await geocodeAddress(streetAddress);
+      await delay(API_DELAY);
+
+      if (!geocoded) {
+        failedCount++;
+        console.log(`    ⚠️  Failed to geocode property ${createdCount + failedCount + 1}, skipping...`);
+        continue;
+      }
+
+      // Generate property data
+      const propertyData = generateRandomPropertyData(propertyType, insertionType);
+      const description = generatePropertyDescription(propertyType, insertionType);
+
+      try {
+        const property = await prisma.property.create({
+          data: {
+            description: description,
+            price: propertyData.price,
+            surfaceArea: propertyData.surfaceArea,
+            rooms: propertyData.rooms,
+            floors: propertyData.floors,
+            elevator: propertyData.elevator,
+            energyClass: propertyData.energyClass,
+            concierge: propertyData.concierge,
+            airConditioning: propertyData.airConditioning,
+            furnished: propertyData.furnished,
+            propertyType: propertyType,
+            insertionType: insertionType,
+            propertyCondition: propertyData.propertyCondition,
+            address: geocoded.address,
+            city: geocoded.city,
+            postalCode: geocoded.postalCode,
+            province: geocoded.province,
+            country: geocoded.country,
+            latitude: geocoded.latitude,
+            longitude: geocoded.longitude,
+            agencyId: agent.agencyId,
+            agentId: agent.userId,
+          },
+        });
+
+        createdCount++;
+
+        if (createdCount % 50 === 0) {
+          console.log(`    ✅ Progress: ${createdCount}/${TARGET_PROPERTIES} properties created (${failedCount} failed)`);
         }
+      } catch (error) {
+        failedCount++;
+        console.error(`    ❌ Failed to create property:`, error.message);
       }
     }
+  }
+
+  console.log(`\n  ✅ Total properties created: ${createdCount}`);
+  console.log(`  ⚠️  Total failures: ${failedCount}`);
+  
+  return { createdCount, failedCount };
+}
+
+// Main seeding function
+async function main() {
+  console.log('🌱 Starting database seeding...');
+  console.log(`📊 Target: ${TARGET_PROPERTIES} properties across Italy`);
+  console.log(`🏛️  Rome properties: ${ROME_PROPERTIES}`);
+
+  if (!GOOGLE_MAPS_API_KEY) {
+    console.error('❌ GOOGLE_MAPS_API_KEY not found in environment variables!');
+    process.exit(1);
+  }
+
+  try {
+    // Optional: Clean existing data (commented out for safety)
+    // console.log('\n🧹 Cleaning existing data...');
+    // await prisma.property.deleteMany({});
+    // await prisma.agent.deleteMany({});
+    // await prisma.assistant.deleteMany({});
+    // await prisma.agency.deleteMany({});
+    // await prisma.agencyAdmin.deleteMany({});
+    // await prisma.user.deleteMany({ where: { role: { in: [Role.AGENT, Role.ADMIN_AGENCY, Role.ASSISTANT] } } });
+    // console.log('✅ Cleaned existing data');
+
+    // Create agencies
+    const agencies = await createAgencies();
     
-    console.log(`🎉 Popolamento completato!`);
-    console.log(`📊 Statistiche:`);
-    console.log(`   - Agenzie: ${agencies.length}`);
-    console.log(`   - Agenti: ${agents.length}`);
-    console.log(`   - Proprietà: ${propertyCount}`);
+    if (agencies.length === 0) {
+      console.error('❌ No agencies created, cannot continue');
+      process.exit(1);
+    }
+
+    // Create agents
+    const agents = await createAgents(agencies);
+    
+    if (agents.length === 0) {
+      console.error('❌ No agents created, cannot continue');
+      process.exit(1);
+    }
+
+    // Create properties
+    const { createdCount, failedCount } = await createProperties(agents);
+
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ Seeding completed successfully!');
+    console.log('='.repeat(60));
+    console.log(`📍 Agencies created: ${agencies.length}`);
+    console.log(`👥 Agents created: ${agents.length}`);
+    console.log(`🏠 Properties created: ${createdCount}`);
+    console.log(`⚠️  Failed properties: ${failedCount}`);
+    console.log('='.repeat(60));
     
   } catch (error) {
-    console.error('❌ Errore durante il popolamento:', error);
+    console.error('❌ Seeding failed:', error);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main();
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+

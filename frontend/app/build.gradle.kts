@@ -101,6 +101,9 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.maps.compose.utils)
     implementation(libs.maps.compose.widgets)
+
+    //Google Play Services Location
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
 
 secrets {

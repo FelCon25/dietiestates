@@ -13,14 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,9 +35,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +65,9 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SignInScreen(
     viewModel: SignInScreenViewModel = koinViewModel(),
+    showPasswordResetSuccess: Boolean = false,
     onNavigateToRegisterScreen: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     onAuthSucceeded: (User) -> Unit
 ){
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -67,6 +76,20 @@ fun SignInScreen(
     val googleAuthUtil = remember { GoogleAuthUtil(context = context) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    var showSuccessMessage by remember { mutableStateOf(showPasswordResetSuccess) }
+    
+    // Initialize success message when parameter changes
+    LaunchedEffect(showPasswordResetSuccess) {
+        if (showPasswordResetSuccess) {
+            showSuccessMessage = true
+        }
+    }
+    
+    // Hide success message when user focuses on email or password field
+    val onFieldFocused = {
+        showSuccessMessage = false
+    }
 
     ObserveAsEvents(viewModel.eventsChannelFlow) { event ->
         when(event){
@@ -133,6 +156,39 @@ fun SignInScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+                
+                // Password reset success message
+                if (showSuccessMessage) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.padding(8.dp))
+                            Text(
+                                text = "Password reset successfully! You can now login.",
+                                color = Color(0xFF1B5E20),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 Text(
                     modifier = Modifier.fillMaxWidth(),
@@ -151,6 +207,11 @@ fun SignInScreen(
                     },
                     icon = {
                         Icon(imageVector = Icons.Outlined.Email, contentDescription = "Email icon", tint = MaterialTheme.colorScheme.primary)
+                    },
+                    onFocusChanged = { isFocused ->
+                        if (isFocused) {
+                            onFieldFocused()
+                        }
                     }
                 )
 
@@ -174,10 +235,28 @@ fun SignInScreen(
                     icon = {
                         Icon(imageVector = Icons.Outlined.Lock, contentDescription = "Lock icon", tint = MaterialTheme.colorScheme.primary)
                     },
-                    isPasswordTextField = true
+                    isPasswordTextField = true,
+                    onFocusChanged = { isFocused ->
+                        if (isFocused) {
+                            onFieldFocused()
+                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    modifier = Modifier.align(Alignment.End),
+                    onClick = onNavigateToForgotPassword
+                ) {
+                    Text(
+                        text = "Forgot Password?",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     modifier = Modifier.fillMaxWidth(),

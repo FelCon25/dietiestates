@@ -75,21 +75,35 @@ fun PropertyItem(
                     .aspectRatio(4 / 3f)
             ) {
 
-                AsyncImage(
-                    modifier = Modifier.fillMaxSize(),
-                    model = "${BASE_URL}${property.images.firstOrNull()}",
-                    error = painterResource(R.drawable.no_image_placeholder),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop
-                )
+                if (property.images.isNotEmpty()) {
+                    AsyncImage(
+                        modifier = Modifier.fillMaxSize(),
+                        model = "${BASE_URL}${property.images.first()}",
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    PropertyImagePlaceholder(
+                        modifier = Modifier.fillMaxSize(),
+                        iconSize = 64.dp
+                    )
+                }
 
                 Text(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(8.dp)
-                        .background(Green80, shape = ShapeDefaults.Small)
+                        .background(
+                            color = when (property.insertionType) {
+                                InsertionType.SALE -> Green80
+                                InsertionType.RENT -> Color(0xFFFF6B35)
+                                InsertionType.SHORT_TERM -> Color(0xFF4A90E2)
+                                InsertionType.VACATION -> Color(0xFFAB47BC)
+                            },
+                            shape = ShapeDefaults.Small
+                        )
                         .padding(horizontal = 8.dp, vertical = 4.dp),
-                    text = "SELL",
+                    text = property.insertionType.name.replace('_', ' '),
                     color = Color.White,
                     fontSize = 12.sp
                 )

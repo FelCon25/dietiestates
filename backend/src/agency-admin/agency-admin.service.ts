@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAssistantDto } from './dto/create-assistant.dto';
 import * as bcrypt from 'bcrypt';
@@ -209,5 +209,99 @@ export class AgencyAdminService {
 
         const { password, ...userWithoutPassword } = agentUser;
         return { user: userWithoutPassword, agent };
+    }
+
+    async deleteAssistant(adminUserId: number, assistantUserId: number) {
+        const admin = await this.prisma.agencyAdmin.findUnique({
+            where: { userId: adminUserId },
+            include: { agency: true },
+        });
+        if (!admin) {
+            throw new NotFoundException('Admin not found');
+        }
+        if (!admin.agency) {
+            throw new BadRequestException('Admin does not have an agency');
+        }
+
+        const assistant = await this.prisma.assistant.findUnique({
+            where: { userId: assistantUserId },
+            include: { user: true },
+        });
+        if (!assistant) {
+            throw new NotFoundException('Assistant not found');
+        }
+        if (assistant.agencyId !== admin.agency.agencyId) {
+            throw new ForbiddenException('This assistant does not belong to your agency');
+        }
+
+        // Delete assistant record first (due to foreign key constraint)
+        await this.prisma.assistant.delete({
+            where: { userId: assistantUserId },
+        });
+
+        // Then delete the user
+        await this.prisma.user.delete({
+            where: { userId: assistantUserId },
+        });
+
+        return { message: 'Assistant deleted successfully', userId: assistantUserId };
+    }
+
+    async deleteAgent(adminUserId: number, role: string, agentUserId: number) {
+        let agency = null;
+
+        if(role == Role.ADMIN_AGENCY) {
+            const admin = await this.prisma.agencyAdmin.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: true },
+            });
+            if (!admin) {
+                throw new NotFoundException('Admin not found');
+            }
+            if (!admin.agency) {
+                throw new BadRequestException('Admin does not have an agency');
+            }
+            agency = admin.agency;
+        }
+        else if(role == Role.ASSISTANT) {
+            const assistant = await this.prisma.assistant.findUnique({
+                where: { userId: adminUserId },
+                include: { agency: true },
+            });
+            if (!assistant) {
+                throw new NotFoundException('Assistant not found');
+            }
+            if (!assistant.agency) {
+                throw new BadRequestException('Assistant does not have an agency');
+            }
+            agency = assistant.agency;
+        }
+
+        if(!agency) {
+            throw new NotFoundException('No agency found');
+        }
+
+        const agent = await this.prisma.agent.findUnique({
+            where: { userId: agentUserId },
+            include: { user: true },
+        });
+        if (!agent) {
+            throw new NotFoundException('Agent not found');
+        }
+        if (agent.agencyId !== agency.agencyId) {
+            throw new ForbiddenException('This agent does not belong to your agency');
+        }
+
+        // Delete agent record first (due to foreign key constraint)
+        await this.prisma.agent.delete({
+            where: { userId: agentUserId },
+        });
+
+        // Then delete the user
+        await this.prisma.user.delete({
+            where: { userId: agentUserId },
+        });
+
+        return { message: 'Agent deleted successfully', userId: agentUserId };
     }
 }

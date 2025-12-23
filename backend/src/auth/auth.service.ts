@@ -424,7 +424,7 @@ export class AuthService {
             data: { password: hashedPassword }
         });
 
-        // Elimina tutte le sessioni tranne quella corrente solo se richiesto
+        // Delete all sessions except the current one only if requested
         if (logoutOtherDevices) {
             await this.prisma.session.deleteMany({
                 where: { 

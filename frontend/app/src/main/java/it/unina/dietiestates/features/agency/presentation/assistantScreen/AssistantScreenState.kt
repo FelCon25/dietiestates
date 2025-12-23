@@ -6,5 +6,8 @@ import it.unina.dietiestates.features.agency.domain.Agent
 data class AssistantScreenState(
     val agency: Agency? = null,
     val agents: List<Agent> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isDeleting: Boolean = false,
+    val successMessage: String? = null,
+    val errorMessage: String? = null
 )

@@ -62,8 +62,8 @@ class SearchScreenViewModel(
             geocodeRepository.getAddressesBySearch(query).collect { result ->
                 when (result) {
                     is Result.Success -> {
-                        // Filtra e mostra gli indirizzi validi da Google
-                        // Accettiamo indirizzi con almeno city O province (per supportare regioni)
+                        // Filter and show valid addresses from Google
+                        // Accept addresses with at least city OR province (to support regions)
                         val filteredAddresses = result.data.filter { address ->
                             (address.city.isNotBlank() || address.province.isNotBlank()) &&
                             address.formatted.trim() != "," &&
@@ -107,7 +107,7 @@ class SearchScreenViewModel(
             null
         }
 
-        // Mantieni i filtri esistenti (prezzo, tipo, ecc.) e aggiorna solo la location
+        // Keep existing filters (price, type, etc.) and update only the location
         val currentFilters = _state.value.filters
         _state.value = _state.value.copy(
             selectedAddress = address,
@@ -125,7 +125,7 @@ class SearchScreenViewModel(
             properties = emptyList()
         )
         
-        // Avvia automaticamente la ricerca
+        // Automatically start the search
         searchProperties()
     }
 
@@ -145,7 +145,7 @@ class SearchScreenViewModel(
             properties = emptyList()
         )
         
-        // Avvia automaticamente la ricerca con i nuovi filtri
+        // Automatically start the search with new filters
         searchProperties()
     }
 
@@ -154,7 +154,7 @@ class SearchScreenViewModel(
             val selectedAddress = _state.value.selectedAddress
             val currentFilters = _state.value.filters
             
-            // DEVE avere un indirizzo selezionato per cercare
+            // MUST have a selected address to search
             if (selectedAddress == null) {
                 _state.value = _state.value.copy(
                     error = "Please select an address from suggestions",
@@ -204,7 +204,7 @@ class SearchScreenViewModel(
     fun loadMoreProperties() {
         viewModelScope.launch {
             if (!_state.value.isLoadingProperties && _state.value.hasMore) {
-                // Delay per testare la paginazione
+                // Delay to test pagination
                 kotlinx.coroutines.delay(2000)
                 _state.value = _state.value.copy(currentPage = _state.value.currentPage + 1)
                 searchProperties()

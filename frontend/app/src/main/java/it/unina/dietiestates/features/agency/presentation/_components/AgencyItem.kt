@@ -85,7 +85,7 @@ fun AgencyItem(
             if (lat != null && lng != null) {
                 val agencyLocation = remember { LatLng(lat, lng) }
                 val cameraPositionState = rememberCameraPositionState {
-                    position = CameraPosition.fromLatLngZoom(agencyLocation, 13f) // Zoom leggermente più lontano per contesto
+                    position = CameraPosition.fromLatLngZoom(agencyLocation, 13f) // Slightly zoomed out for context
                 }
                 val markerState = remember { MarkerState(position = agencyLocation) }
 
@@ -131,7 +131,7 @@ private fun DetailRow(icon: ImageVector, text: String, isLink: Boolean = false) 
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isLink) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-            maxLines = if (icon == Icons.Filled.LocationOn) 3 else 1, // Più linee per l'indirizzo
+            maxLines = if (icon == Icons.Filled.LocationOn) 3 else 1, // More lines for address
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
     }

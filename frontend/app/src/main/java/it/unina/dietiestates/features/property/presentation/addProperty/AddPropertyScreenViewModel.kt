@@ -151,7 +151,7 @@ class AddPropertyScreenViewModel(
                         }
 
                         onError {
-                            println("Impossible to retrieve addresses")
+                            println("Unable to retrieve addresses")
                             _state.update {
                                 it.copy(
                                     location = it.location.copy(

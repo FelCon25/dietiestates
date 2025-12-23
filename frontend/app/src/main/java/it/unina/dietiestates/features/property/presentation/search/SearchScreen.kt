@@ -171,7 +171,7 @@ fun SearchScreen(
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
 
-                // Address Suggestions Dropdown - Mostra SOLO quando ci sono risultati
+                // Address Suggestions Dropdown - Show ONLY when there are results
                 if (state.showAddressSuggestions && state.addressSuggestions.isNotEmpty()) {
                     Card(
                         modifier = Modifier
@@ -207,7 +207,7 @@ fun SearchScreen(
                                         val hasStreet = address.route.isNotBlank() || address.streetNumber.isNotBlank()
                                         
                                         when {
-                                            // Caso 1: Via completa
+                                            // Case 1: Complete street address
                                             hasStreet -> {
                                                 Text(
                                                     text = "${address.route} ${address.streetNumber}".trim(),
@@ -226,7 +226,7 @@ fun SearchScreen(
                                                     )
                                                 }
                                             }
-                                            // Caso 2: Città e Provincia
+                                            // Case 2: City and Province
                                             address.city.isNotBlank() && address.province.isNotBlank() -> {
                                                 Text(
                                                     text = address.city,
@@ -240,7 +240,7 @@ fun SearchScreen(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
-                                            // Caso 3: Solo Città (o Regione)
+                                            // Case 3: City only (or Region)
                                             address.city.isNotBlank() -> {
                                                 Text(
                                                     text = address.city,
@@ -254,7 +254,7 @@ fun SearchScreen(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
-                                            // Caso 4: Solo Provincia/Regione
+                                            // Case 4: Province/Region only
                                             address.province.isNotBlank() -> {
                                                 Text(
                                                     text = address.province,

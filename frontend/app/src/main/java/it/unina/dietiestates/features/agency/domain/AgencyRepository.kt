@@ -19,4 +19,8 @@ interface AgencyRepository {
     suspend fun addAssistant(email: String, firstName: String, lastName: String, password: String, phone: String?): Flow<Result<Assistant, DataError.Remote>>
 
     suspend fun addAgent(email: String, firstName: String, lastName: String, password: String, phone: String?): Flow<Result<Agent, DataError.Remote>>
+
+    suspend fun deleteAssistant(userId: Int): Flow<Result<Int, DataError.Remote>>
+
+    suspend fun deleteAgent(userId: Int): Flow<Result<Int, DataError.Remote>>
 }

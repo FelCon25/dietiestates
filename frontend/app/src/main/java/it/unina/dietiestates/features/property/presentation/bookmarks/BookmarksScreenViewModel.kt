@@ -65,7 +65,7 @@ class BookmarksScreenViewModel(
                                 isRefreshing = false
                             )
                         }
-                        onEvent(BookmarksScreenEvent.OnError("Impossible to get saved properties, please try again."))
+                        onEvent(BookmarksScreenEvent.OnError("Unable to get saved properties, please try again."))
                     }
 
                     onLoading {  isLoading ->

@@ -46,7 +46,7 @@ class AgentScreenViewModel(
             }
 
             onError { error ->
-                println("Nessuna agenza trovata $error")
+                println("No agency found $error")
             }
         }
     }

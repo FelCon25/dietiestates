@@ -5,6 +5,7 @@ import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.agency.data.dto.AgencyDto
 import it.unina.dietiestates.features.agency.data.dto.AgentDto
 import it.unina.dietiestates.features.agency.data.dto.AssistantDto
+import it.unina.dietiestates.features.agency.data.dto.DeleteResponseDto
 import it.unina.dietiestates.features.agency.data.dto.NewAgentDto
 import it.unina.dietiestates.features.agency.data.dto.NewAssistantDto
 
@@ -23,4 +24,8 @@ interface RemoteAgencyDataSource {
     suspend fun addAssistant(email: String, firstName: String, lastName: String, password: String, phone: String?): Result<NewAssistantDto, DataError.Remote>
 
     suspend fun addAgent(email: String, firstName: String, lastName: String, password: String, phone: String?): Result<NewAgentDto, DataError.Remote>
+
+    suspend fun deleteAssistant(userId: Int): Result<DeleteResponseDto, DataError.Remote>
+
+    suspend fun deleteAgent(userId: Int): Result<DeleteResponseDto, DataError.Remote>
 }

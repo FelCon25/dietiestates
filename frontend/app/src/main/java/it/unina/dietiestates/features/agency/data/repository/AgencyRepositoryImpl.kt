@@ -71,4 +71,24 @@ class AgencyRepositoryImpl(
             emit(Result.IsLoading(false))
         }
     }
+
+    override suspend fun deleteAssistant(userId: Int): Flow<Result<Int, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remoteAdminDataSource.deleteAssistant(userId).map { it.userId })
+
+            emit(Result.IsLoading(false))
+        }
+    }
+
+    override suspend fun deleteAgent(userId: Int): Flow<Result<Int, DataError.Remote>> {
+        return flow {
+            emit(Result.IsLoading(true))
+
+            emit(remoteAdminDataSource.deleteAgent(userId).map { it.userId })
+
+            emit(Result.IsLoading(false))
+        }
+    }
 }

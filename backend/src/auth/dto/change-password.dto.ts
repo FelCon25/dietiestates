@@ -2,12 +2,12 @@ import { IsNotEmpty, IsString, MinLength, IsBoolean, IsOptional } from 'class-va
 
 export class ChangePasswordDto {
   @IsString()
-  @IsNotEmpty({ message: 'La password corrente è obbligatoria' })
+  @IsNotEmpty({ message: 'Current password is required' })
   currentPassword: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'La nuova password è obbligatoria' })
-  @MinLength(8, { message: 'La nuova password deve essere lunga almeno 8 caratteri' })
+  @IsNotEmpty({ message: 'New password is required' })
+  @MinLength(8, { message: 'New password must be at least 8 characters long' })
   newPassword: string;
 
   @IsBoolean()

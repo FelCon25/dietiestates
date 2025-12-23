@@ -2,7 +2,9 @@ package it.unina.dietiestates.features.agency.presentation.assistantScreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import it.unina.dietiestates.core.domain.DataError
 import it.unina.dietiestates.core.domain.onError
+import it.unina.dietiestates.core.domain.onLoading
 import it.unina.dietiestates.core.domain.onSuccess
 import it.unina.dietiestates.features.agency.domain.AgencyRepository
 import it.unina.dietiestates.features.agency.domain.Agent
@@ -61,8 +63,44 @@ class AssistantScreenViewModel(
     fun onNewAgentAdded(agent: Agent){
         _state.update {
             it.copy(
-                agents = listOf(agent) + it.agents
+                agents = listOf(agent) + it.agents,
+                successMessage = "Agent added successfully"
             )
         }
+    }
+
+    fun deleteAgent(userId: Int) {
+        viewModelScope.launch {
+            repository.deleteAgent(userId).collect { result ->
+                result.apply {
+                    onSuccess { deletedUserId ->
+                        _state.update {
+                            it.copy(
+                                agents = it.agents.filter { agent -> agent.userId != deletedUserId },
+                                successMessage = "Agent deleted successfully"
+                            )
+                        }
+                    }
+
+                    onError { error ->
+                        val message = when (error) {
+                            is DataError.Remote.CustomError -> error.errorMessage
+                            DataError.Remote.NoInternet -> "No internet connection"
+                            DataError.Remote.Server -> "Server error. Please try again later"
+                            else -> "Failed to delete agent"
+                        }
+                        _state.update { it.copy(errorMessage = message) }
+                    }
+
+                    onLoading { isLoading ->
+                        _state.update { it.copy(isDeleting = isLoading) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _state.update { it.copy(successMessage = null, errorMessage = null) }
     }
 }

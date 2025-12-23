@@ -1,6 +1,7 @@
 package it.unina.dietiestates.features.agency.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -13,6 +14,7 @@ import it.unina.dietiestates.core.domain.Result
 import it.unina.dietiestates.features.agency.data.dto.AgencyDto
 import it.unina.dietiestates.features.agency.data.dto.AgentDto
 import it.unina.dietiestates.features.agency.data.dto.AssistantDto
+import it.unina.dietiestates.features.agency.data.dto.DeleteResponseDto
 import it.unina.dietiestates.features.agency.data.dto.NewAgentDto
 import it.unina.dietiestates.features.agency.data.dto.NewAssistantDto
 
@@ -93,6 +95,18 @@ class RemoteAgencyDataSourceImpl(
                     )
                 )
             }
+        }
+    }
+
+    override suspend fun deleteAssistant(userId: Int): Result<DeleteResponseDto, DataError.Remote> {
+        return safeCall<DeleteResponseDto> {
+            httpClient.delete("$BASE_URL/agency-admin/assistant/$userId")
+        }
+    }
+
+    override suspend fun deleteAgent(userId: Int): Result<DeleteResponseDto, DataError.Remote> {
+        return safeCall<DeleteResponseDto> {
+            httpClient.delete("$BASE_URL/agency-admin/agent/$userId")
         }
     }
 }

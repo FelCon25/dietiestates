@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { AgencyAdminService } from './agency-admin.service';
 import { Roles } from 'src/auth/guards/roles.decorator';
@@ -40,5 +40,19 @@ export class AgencyAdminController {
     async createAgent(@Req() req: Request, @Body() dto: CreateAgentDto) {
         const user = req.user as AuthUser;
         return this.agencyAdminService.createAgent(user.userId, user.role, dto);
+    }
+
+    @Delete('assistant/:userId')
+    @Roles(Role.ADMIN_AGENCY)
+    async deleteAssistant(@Req() req: Request, @Param('userId', ParseIntPipe) userId: number) {
+        const user = req.user as AuthUser;
+        return this.agencyAdminService.deleteAssistant(user.userId, userId);
+    }
+
+    @Delete('agent/:userId')
+    @Roles(Role.ADMIN_AGENCY, Role.ASSISTANT)
+    async deleteAgent(@Req() req: Request, @Param('userId', ParseIntPipe) userId: number) {
+        const user = req.user as AuthUser;
+        return this.agencyAdminService.deleteAgent(user.userId, user.role, userId);
     }
 }

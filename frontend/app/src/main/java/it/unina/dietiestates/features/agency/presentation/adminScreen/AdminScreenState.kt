@@ -8,5 +8,8 @@ data class AdminScreenState(
     val agency: Agency? = null,
     val assistants: List<Assistant> = emptyList(),
     val agents: List<Agent> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isDeleting: Boolean = false,
+    val successMessage: String? = null,
+    val errorMessage: String? = null
 )

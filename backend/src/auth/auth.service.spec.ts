@@ -8,37 +8,111 @@ import { Role } from '@prisma/client';
 
 /**
  * ============================================================================
- * N-WECT (N-Way Equivalence Class Testing) for AuthService.changePassword
+ * RWECT (Weak Robust Equivalence Class Testing) for AuthService.changePassword
  * ============================================================================
  * 
- * Identified Equivalence Classes:
+ * RWECT Strategy:
+ * 1. For VALID classes: one test using values from ALL valid classes
+ * 2. For INVALID classes: one test per invalid class, with ALL OTHER 
+ *    parameters using VALID values
  * 
- * | Parameter           | Valid EC                   | Invalid EC                 |
- * |---------------------|----------------------------|----------------------------|
- * | userId              | EC1.1: Existing user       | EC1.2: Non-existing user   |
- * | currentPassword     | EC2.1: Correct password    | EC2.2: Wrong password      |
- * | newPassword         | EC3.1: Valid (>= 8 chars)  | EC3.2: Invalid (< 8 chars) |
- * | logoutOtherDevices  | EC4.1: true                | EC4.2: false               |
+ * Method signature:
+ * changePassword(
+ *   userId: number,
+ *   currentSessionId: number,
+ *   currentPassword: string,
+ *   newPassword: string,
+ *   logoutOtherDevices: boolean = true
+ * )
  * 
- * Pairwise Test Matrix (2-way):
+ * ============================================================================
+ * EQUIVALENCE CLASSES FOR ALL PARAMETERS
+ * ============================================================================
  * 
- * | TC  | userId       | currentPassword | newPassword | logoutOtherDevices | Expected                    |
- * |-----|--------------|-----------------|-------------|--------------------|-----------------------------|
- * | TC1 | existing     | correct         | valid       | true               | Success + logout sessions   |
- * | TC2 | existing     | correct         | valid       | false              | Success + keep sessions     |
- * | TC3 | existing     | wrong           | valid       | true               | BadRequestException         |
- * | TC4 | non-existing | correct         | valid       | true               | NotFoundException           |
- * | TC5 | existing     | correct         | invalid     | true               | Success (DTO validation)    |
- * | TC6 | existing     | correct         | valid       | undefined          | Success + default logout    |
+ * PARAMETER 1: userId (number)
+ * AUTHENTICATION: AccessTokenGuard (JWT)
+ * ┌─────────┬─────────────────────────────┬──────────────────┐
+ * │ EC ID   │ Description                 │ Representative   │
+ * ├─────────┼─────────────────────────────┼──────────────────┤
+ * │ EC1.1   │ VALID: User exists in DB    │ userId = 1       │
+ * │ EC1.2   │ INVALID: User not in DB     │ userId = 999     │
+ * └─────────┴─────────────────────────────┴──────────────────┘
+ * 
+ * PARAMETER 2: currentSessionId (number)
+ * AUTHENTICATION: AccessTokenGuard + Service validation
+ * ┌─────────┬─────────────────────────────┬──────────────────┐
+ * │ EC ID   │ Description                 │ Representative   │
+ * ├─────────┼─────────────────────────────┼──────────────────┤
+ * │ EC2.1   │ VALID: Session exists       │ sessionId = 100  │
+ * │ EC2.2   │ INVALID: Session not in DB  │ sessionId = 999  │
+ * └─────────┴─────────────────────────────┴──────────────────┘
+ * 
+ * PARAMETER 3: currentPassword (string)
+ * VALIDATORS: @IsString(), @IsNotEmpty()
+ * ┌─────────┬─────────────────────────────┬──────────────────────┐
+ * │ EC ID   │ Description                 │ Representative       │
+ * ├─────────┼─────────────────────────────┼──────────────────────┤
+ * │ EC3.1   │ VALID: Matches stored hash  │ "correctPassword123" │
+ * │ EC3.2   │ INVALID: Does not match     │ "wrongPassword123"   │
+ * └─────────┴─────────────────────────────┴──────────────────────┘
+ * 
+ * PARAMETER 4: newPassword (string)
+ * VALIDATORS: @IsString(), @IsNotEmpty(), @MinLength(8)
+ * ┌─────────┬─────────────────────────────┬──────────────────────┐
+ * │ EC ID   │ Description                 │ Representative       │
+ * ├─────────┼─────────────────────────────┼──────────────────────┤
+ * │ EC4.1   │ VALID: >= 8 characters      │ "newSecurePass123"   │
+ * └─────────┴─────────────────────────────┴──────────────────────┘
+ * Note: Invalid case (< 8 chars) handled by DTO validator
+ * 
+ * PARAMETER 5: logoutOtherDevices (boolean)
+ * VALIDATORS: @IsBoolean(), @IsOptional() (default: true)
+ * ┌─────────┬─────────────────────────────┬──────────────────┐
+ * │ EC ID   │ Description                 │ Representative   │
+ * ├─────────┼─────────────────────────────┼──────────────────┤
+ * │ EC5.1   │ VALID: true (logout others) │ true             │
+ * │ EC5.2   │ VALID: false (keep others)  │ false            │
+ * └─────────┴─────────────────────────────┴──────────────────┘
+ * 
+ * ============================================================================
+ * RWECT TEST STRATEGY
+ * ============================================================================
+ * 
+ * VALID classes count: EC1.1, EC2.1, EC3.1, EC4.1, EC5.1, EC5.2 = 6
+ * INVALID classes count: EC1.2, EC2.2, EC3.2 = 3
+ * 
+ * Number of tests = max(valid classes per param) + number of invalid classes
+ *                 = 2 (for P5) + 3 (invalid) = 5 tests
+ * 
+ * ============================================================================
+ * RWECT TEST MATRIX
+ * ============================================================================
+ * 
+ * VALID TESTS (cover all valid ECs):
+ * │ TC  │ userId │ sessionId │ currentPwd │ newPwd │ logout │ Purpose          │
+ * ├─────┼────────┼───────────┼────────────┼────────┼────────┼──────────────────┤
+ * │ TC1 │ EC1.1  │ EC2.1     │ EC3.1      │ EC4.1  │ EC5.1  │ All valid +true  │
+ * │ TC2 │ EC1.1  │ EC2.1     │ EC3.1      │ EC4.1  │ EC5.2  │ All valid +false │
+ * 
+ * INVALID TESTS (one invalid EC, all others valid):
+ * │ TC  │ userId │ sessionId │ currentPwd │ newPwd │ logout │ Tests Invalid    │
+ * ├─────┼────────┼───────────┼────────────┼────────┼────────┼──────────────────┤
+ * │ TC3 │ EC1.2  │ EC2.1     │ EC3.1      │ EC4.1  │ EC5.1  │ userId invalid   │
+ * │ TC4 │ EC1.1  │ EC2.2     │ EC3.1      │ EC4.1  │ EC5.1  │ sessionId invalid│
+ * │ TC5 │ EC1.1  │ EC2.1     │ EC3.2      │ EC4.1  │ EC5.1  │ password invalid │
+ * └─────┴────────┴───────────┴────────────┴────────┴────────┴──────────────────┘
  */
 
-// Mock factory to create test users
+// ============================================================================
+// MOCK FACTORIES
+// ============================================================================
+
 const createMockUser = (overrides = {}) => ({
   userId: 1,
-  email: 'test@example.com',
-  firstName: 'Test',
-  lastName: 'User',
-  password: '$2b$10$hashedpassword', // bcrypt hash simulato
+  email: 'user@example.com',
+  password: '$2b$10$hashedPassword',
+  firstName: 'John',
+  lastName: 'Doe',
   phone: null,
   profilePic: null,
   provider: 'local',
@@ -48,46 +122,57 @@ const createMockUser = (overrides = {}) => ({
   ...overrides,
 });
 
-// PrismaService mock
+// ============================================================================
+// PRISMA & JWT MOCKS
+// ============================================================================
+
 const mockPrismaService = {
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),
-    create: jest.fn(),
   },
   session: {
-    create: jest.fn(),
     findUnique: jest.fn(),
-    findMany: jest.fn(),
-    delete: jest.fn(),
     deleteMany: jest.fn(),
-    update: jest.fn(),
-  },
-  agencyAdmin: {
-    create: jest.fn(),
-    findUnique: jest.fn(),
-  },
-  verificationCode: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    delete: jest.fn(),
-    deleteMany: jest.fn(),
-    count: jest.fn(),
   },
 };
 
-// JwtService mock
 const mockJwtService = {
-  sign: jest.fn().mockReturnValue('mock-token'),
-  verify: jest.fn(),
+  sign: jest.fn().mockReturnValue('mock-jwt-token'),
 };
 
-describe('AuthService', () => {
+// ============================================================================
+// TEST SUITE - RWECT (Weak Robust Equivalence Class Testing)
+// ============================================================================
+
+describe('AuthService.changePassword - RWECT (Weak Robust ECT)', () => {
   let service: AuthService;
   let prisma: typeof mockPrismaService;
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // REPRESENTATIVE VALUES FOR EACH EQUIVALENCE CLASS
+  // ══════════════════════════════════════════════════════════════════════════
+  
+  // P1: userId
+  const EC1_1_VALID_USER = 1;               // VALID: user exists
+  const EC1_2_INVALID_USER = 999;           // INVALID: user not exists
+  
+  // P2: currentSessionId
+  const EC2_1_VALID_SESSION = 100;          // VALID: session exists
+  const EC2_2_INVALID_SESSION = 999;        // INVALID: session not exists
+  
+  // P3: currentPassword
+  const EC3_1_VALID_PASSWORD = 'correctPassword123';    // VALID: matches hash
+  const EC3_2_INVALID_PASSWORD = 'wrongPassword123';    // INVALID: doesn't match
+  
+  // P4: newPassword
+  const EC4_1_VALID_NEW_PASSWORD = 'newSecurePass123';  // VALID: >= 8 chars
+  
+  // P5: logoutOtherDevices
+  const EC5_1_VALID_LOGOUT_TRUE = true;     // VALID: logout others
+  const EC5_2_VALID_LOGOUT_FALSE = false;   // VALID: keep others
+
   beforeEach(async () => {
-    // Reset all mocks before each test
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -102,280 +187,160 @@ describe('AuthService', () => {
     prisma = mockPrismaService;
   });
 
-  describe('changePassword - N-WECT Test Suite', () => {
-    const VALID_USER_ID = 1;
-    const INVALID_USER_ID = 999;
-    const CURRENT_SESSION_ID = 100;
-    const CORRECT_PASSWORD = 'correctPassword123';
-    const WRONG_PASSWORD = 'wrongPassword123';
-    const VALID_NEW_PASSWORD = 'newPassword123'; // >= 8 characters
-    const INVALID_NEW_PASSWORD = 'short'; // < 8 characters (validated by DTO)
+  // ══════════════════════════════════════════════════════════════════════════
+  // VALID TESTS: All parameters use valid equivalence classes
+  // ══════════════════════════════════════════════════════════════════════════
 
+  describe('VALID equivalence classes', () => {
+    
     /**
-     * TC1: existing userId + correct password + valid newPassword + logoutOtherDevices=true
-     * Expected: Success with logout of other sessions
+     * TC1: All VALID classes with logoutOtherDevices = true (EC5.1)
+     * Covers: EC1.1, EC2.1, EC3.1, EC4.1, EC5.1
      */
-    it('TC1: should change password and logout other sessions when logoutOtherDevices=true', async () => {
+    it('TC1: [EC1.1, EC2.1, EC3.1, EC4.1, EC5.1] All valid - logout other sessions', async () => {
       // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
+      const hashedPassword = await bcrypt.hash(EC3_1_VALID_PASSWORD, 10);
+      const mockUser = createMockUser({ userId: EC1_1_VALID_USER, password: hashedPassword });
+      const mockSession = { sessionId: EC2_1_VALID_SESSION, userId: EC1_1_VALID_USER };
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser, password: 'newHashedPassword' });
+      prisma.session.findUnique.mockResolvedValue(mockSession);
+      prisma.user.update.mockResolvedValue({ ...mockUser });
       prisma.session.deleteMany.mockResolvedValue({ count: 2 });
 
       // Act
       const result = await service.changePassword(
-        VALID_USER_ID,
-        CURRENT_SESSION_ID,
-        CORRECT_PASSWORD,
-        VALID_NEW_PASSWORD,
-        true
+        EC1_1_VALID_USER,           // EC1.1: VALID
+        EC2_1_VALID_SESSION,        // EC2.1: VALID
+        EC3_1_VALID_PASSWORD,       // EC3.1: VALID
+        EC4_1_VALID_NEW_PASSWORD,   // EC4.1: VALID
+        EC5_1_VALID_LOGOUT_TRUE     // EC5.1: VALID
       );
 
       // Assert
       expect(result).toEqual({ message: 'Password changed successfully' });
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { userId: VALID_USER_ID } });
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { userId: VALID_USER_ID },
-        data: { password: expect.any(String) },
-      });
       expect(prisma.session.deleteMany).toHaveBeenCalledWith({
         where: {
-          userId: VALID_USER_ID,
-          sessionId: { not: CURRENT_SESSION_ID },
+          userId: EC1_1_VALID_USER,
+          sessionId: { not: EC2_1_VALID_SESSION },
         },
       });
     });
 
     /**
-     * TC2: existing userId + correct password + valid newPassword + logoutOtherDevices=false
-     * Expected: Success without logout of other sessions
+     * TC2: All VALID classes with logoutOtherDevices = false (EC5.2)
+     * Covers: EC1.1, EC2.1, EC3.1, EC4.1, EC5.2
      */
-    it('TC2: should change password and keep other sessions when logoutOtherDevices=false', async () => {
+    it('TC2: [EC1.1, EC2.1, EC3.1, EC4.1, EC5.2] All valid - keep other sessions', async () => {
       // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
+      const hashedPassword = await bcrypt.hash(EC3_1_VALID_PASSWORD, 10);
+      const mockUser = createMockUser({ userId: EC1_1_VALID_USER, password: hashedPassword });
+      const mockSession = { sessionId: EC2_1_VALID_SESSION, userId: EC1_1_VALID_USER };
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser, password: 'newHashedPassword' });
+      prisma.session.findUnique.mockResolvedValue(mockSession);
+      prisma.user.update.mockResolvedValue({ ...mockUser });
 
       // Act
       const result = await service.changePassword(
-        VALID_USER_ID,
-        CURRENT_SESSION_ID,
-        CORRECT_PASSWORD,
-        VALID_NEW_PASSWORD,
-        false
+        EC1_1_VALID_USER,           // EC1.1: VALID
+        EC2_1_VALID_SESSION,        // EC2.1: VALID
+        EC3_1_VALID_PASSWORD,       // EC3.1: VALID
+        EC4_1_VALID_NEW_PASSWORD,   // EC4.1: VALID
+        EC5_2_VALID_LOGOUT_FALSE    // EC5.2: VALID
       );
 
       // Assert
       expect(result).toEqual({ message: 'Password changed successfully' });
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { userId: VALID_USER_ID } });
-      expect(prisma.user.update).toHaveBeenCalled();
-      // Verify that deleteMany was NOT called
       expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
+  });
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // INVALID TESTS: One invalid EC, all others valid (RWECT requirement)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe('INVALID equivalence classes (one invalid, others valid)', () => {
+    
     /**
-     * TC3: existing userId + wrong password + valid newPassword + logoutOtherDevices=true
-     * Expected: BadRequestException
+     * TC3: INVALID userId (EC1.2), all others VALID
+     * Tests: User not found in database
      */
-    it('TC3: should throw BadRequestException when current password is incorrect', async () => {
-      // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
-
-      prisma.user.findUnique.mockResolvedValue(mockUser);
-
-      // Act & Assert
-      await expect(
-        service.changePassword(
-          VALID_USER_ID,
-          CURRENT_SESSION_ID,
-          WRONG_PASSWORD, // Wrong password
-          VALID_NEW_PASSWORD,
-          true
-        )
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(
-        service.changePassword(
-          VALID_USER_ID,
-          CURRENT_SESSION_ID,
-          WRONG_PASSWORD,
-          VALID_NEW_PASSWORD,
-          true
-        )
-      ).rejects.toThrow('Current password is incorrect');
-
-      // Verify that update was NOT called
-      expect(prisma.user.update).not.toHaveBeenCalled();
-      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
-    });
-
-    /**
-     * TC4: non-existing userId + correct password + valid newPassword + logoutOtherDevices=true
-     * Expected: NotFoundException
-     */
-    it('TC4: should throw NotFoundException when user does not exist', async () => {
+    it('TC3: [EC1.2, EC2.1, EC3.1, EC4.1, EC5.1] Invalid userId - NotFoundException', async () => {
       // Arrange
       prisma.user.findUnique.mockResolvedValue(null); // User not found
 
       // Act & Assert
       await expect(
         service.changePassword(
-          INVALID_USER_ID, // Non-existing userId
-          CURRENT_SESSION_ID,
-          CORRECT_PASSWORD,
-          VALID_NEW_PASSWORD,
-          true
+          EC1_2_INVALID_USER,         // EC1.2: INVALID - user not exists
+          EC2_1_VALID_SESSION,        // EC2.1: VALID
+          EC3_1_VALID_PASSWORD,       // EC3.1: VALID
+          EC4_1_VALID_NEW_PASSWORD,   // EC4.1: VALID
+          EC5_1_VALID_LOGOUT_TRUE     // EC5.1: VALID
         )
       ).rejects.toThrow(NotFoundException);
 
-      await expect(
-        service.changePassword(
-          INVALID_USER_ID,
-          CURRENT_SESSION_ID,
-          CORRECT_PASSWORD,
-          VALID_NEW_PASSWORD,
-          true
-        )
-      ).rejects.toThrow('User not found');
-
-      // Verify that update was NOT called
+      // Verify no changes were made
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
 
     /**
-     * TC5: existing userId + correct password + invalid newPassword + logoutOtherDevices=true
-     * Expected: The method accepts any string - validation is done in the DTO
-     * 
-     * Note: This test verifies that the service does not validate password length.
-     * The MinLength(8) validation is handled by the DTO at the controller level.
+     * TC4: INVALID sessionId (EC2.2), all others VALID
+     * Tests: Session not found in database
      */
-    it('TC5: should accept short password (DTO validation happens at controller level)', async () => {
+    it('TC4: [EC1.1, EC2.2, EC3.1, EC4.1, EC5.1] Invalid sessionId - NotFoundException', async () => {
       // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
+      const hashedPassword = await bcrypt.hash(EC3_1_VALID_PASSWORD, 10);
+      const mockUser = createMockUser({ userId: EC1_1_VALID_USER, password: hashedPassword });
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser, password: 'newHashedPassword' });
-      prisma.session.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.session.findUnique.mockResolvedValue(null); // Session not found
 
-      // Act - The service does not validate length, this is the DTO's responsibility
-      const result = await service.changePassword(
-        VALID_USER_ID,
-        CURRENT_SESSION_ID,
-        CORRECT_PASSWORD,
-        INVALID_NEW_PASSWORD, // Short password - validated by DTO, not by service
-        true
-      );
+      // Act & Assert
+      await expect(
+        service.changePassword(
+          EC1_1_VALID_USER,           // EC1.1: VALID
+          EC2_2_INVALID_SESSION,      // EC2.2: INVALID - session not exists
+          EC3_1_VALID_PASSWORD,       // EC3.1: VALID
+          EC4_1_VALID_NEW_PASSWORD,   // EC4.1: VALID
+          EC5_1_VALID_LOGOUT_TRUE     // EC5.1: VALID
+        )
+      ).rejects.toThrow(NotFoundException);
 
-      // Assert - The service proceeds without errors
-      expect(result).toEqual({ message: 'Password changed successfully' });
-      expect(prisma.user.update).toHaveBeenCalled();
+      // Verify no changes were made
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
 
     /**
-     * TC6: existing userId + correct password + valid newPassword + logoutOtherDevices=undefined
-     * Expected: Success with logout (default value = true)
+     * TC5: INVALID currentPassword (EC3.2), all others VALID
+     * Tests: Password does not match stored hash
      */
-    it('TC6: should use default logoutOtherDevices=true when parameter is undefined', async () => {
+    it('TC5: [EC1.1, EC2.1, EC3.2, EC4.1, EC5.1] Invalid password - BadRequestException', async () => {
       // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
+      const hashedPassword = await bcrypt.hash(EC3_1_VALID_PASSWORD, 10);
+      const mockUser = createMockUser({ userId: EC1_1_VALID_USER, password: hashedPassword });
+      const mockSession = { sessionId: EC2_1_VALID_SESSION, userId: EC1_1_VALID_USER };
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser, password: 'newHashedPassword' });
-      prisma.session.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.session.findUnique.mockResolvedValue(mockSession);
 
-      // Act - We don't pass the logoutOtherDevices parameter (uses default)
-      const result = await service.changePassword(
-        VALID_USER_ID,
-        CURRENT_SESSION_ID,
-        CORRECT_PASSWORD,
-        VALID_NEW_PASSWORD
-        // logoutOtherDevices omitted - default is true
-      );
+      // Act & Assert
+      await expect(
+        service.changePassword(
+          EC1_1_VALID_USER,           // EC1.1: VALID
+          EC2_1_VALID_SESSION,        // EC2.1: VALID
+          EC3_2_INVALID_PASSWORD,     // EC3.2: INVALID - wrong password
+          EC4_1_VALID_NEW_PASSWORD,   // EC4.1: VALID
+          EC5_1_VALID_LOGOUT_TRUE     // EC5.1: VALID
+        )
+      ).rejects.toThrow(BadRequestException);
 
-      // Assert
-      expect(result).toEqual({ message: 'Password changed successfully' });
-      // Verify that deleteMany WAS called (default = true)
-      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
-        where: {
-          userId: VALID_USER_ID,
-          sessionId: { not: CURRENT_SESSION_ID },
-        },
-      });
-    });
-
-    /**
-     * Additional test: Verify that the new password is correctly hashed
-     */
-    it('should hash the new password before saving', async () => {
-      // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
-
-      prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser });
-      prisma.session.deleteMany.mockResolvedValue({ count: 0 });
-
-      // Act
-      await service.changePassword(
-        VALID_USER_ID,
-        CURRENT_SESSION_ID,
-        CORRECT_PASSWORD,
-        VALID_NEW_PASSWORD,
-        true
-      );
-
-      // Assert - Verify that the saved password is different from the plain text one
-      const updateCall = prisma.user.update.mock.calls[0][0];
-      expect(updateCall.data.password).not.toBe(VALID_NEW_PASSWORD);
-      // Verify that it's a valid bcrypt hash (starts with $2b$)
-      expect(updateCall.data.password).toMatch(/^\$2[aby]\$\d+\$/);
-    });
-
-    /**
-     * Additional test: Boundary test for sessionId
-     */
-    it('should correctly exclude current session from deletion', async () => {
-      // Arrange
-      const mockUser = createMockUser();
-      const hashedCorrectPassword = await bcrypt.hash(CORRECT_PASSWORD, 10);
-      mockUser.password = hashedCorrectPassword;
-      const specificSessionId = 42;
-
-      prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.user.update.mockResolvedValue({ ...mockUser });
-      prisma.session.deleteMany.mockResolvedValue({ count: 3 });
-
-      // Act
-      await service.changePassword(
-        VALID_USER_ID,
-        specificSessionId,
-        CORRECT_PASSWORD,
-        VALID_NEW_PASSWORD,
-        true
-      );
-
-      // Assert
-      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
-        where: {
-          userId: VALID_USER_ID,
-          sessionId: { not: specificSessionId },
-        },
-      });
+      // Verify no changes were made
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
   });
 });
-

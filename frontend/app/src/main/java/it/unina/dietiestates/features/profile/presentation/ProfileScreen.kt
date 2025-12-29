@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import it.unina.dietiestates.BuildConfig
+import it.unina.dietiestates.core.presentation.util.parseImageUrl
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
 import it.unina.dietiestates.features.profile.domain.NotificationCategory
 import it.unina.dietiestates.features.profile.presentation._components.SessionItem
@@ -188,7 +189,7 @@ fun ProfileScreen(
                                 if(user.profilePic != null){
                                     AsyncImage(
                                         modifier = Modifier.fillMaxSize(),
-                                        model = BuildConfig.BASE_URL + state.user?.profilePic,
+                                        model = parseImageUrl(state.user?.profilePic),
                                         contentDescription = "User profile picture",
                                         contentScale = ContentScale.Crop
                                     )

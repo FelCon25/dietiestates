@@ -9,6 +9,7 @@ import { PropertyModule } from './property/property.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { UserModule } from './user/user.module';
 import { SavedSearchModule } from './saved-search/saved-search.module';
+import { S3Module } from './s3/s3.module';
 import * as admin from 'firebase-admin';
 
 @Module({
@@ -21,6 +22,7 @@ import * as admin from 'firebase-admin';
     NotificationPreferencesModule,
     UserModule,
     SavedSearchModule,
+    S3Module,
   ],
   controllers: [AppController],
   providers: [AppService],

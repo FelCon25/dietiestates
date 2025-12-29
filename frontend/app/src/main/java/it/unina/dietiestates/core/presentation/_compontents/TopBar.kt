@@ -25,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import it.unina.dietiestates.BuildConfig
 import it.unina.dietiestates.R
+import it.unina.dietiestates.core.presentation.util.parseImageUrl
 import it.unina.dietiestates.core.domain.User
 
 @Composable
@@ -79,7 +79,7 @@ fun TopBar(
                 AsyncImage(
                     modifier = Modifier
                         .size(32.dp),
-                    model = BuildConfig.BASE_URL + user.profilePic,
+                    model = parseImageUrl(user.profilePic),
                     contentDescription = "User profile picture",
                     contentScale = ContentScale.Crop
                 )

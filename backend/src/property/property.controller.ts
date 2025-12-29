@@ -24,12 +24,16 @@ import { AccessTokenGuard } from 'src/auth/guards/access-token.guard';
 import { SearchPropertyDto } from './dto/search-property.dto';
 import { FilesInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { makePropertyImagesStorageConfig, makePropertyCreationStorageConfig } from 'src/utils/multer.config';
+import { S3Service } from 'src/s3/s3.service';
 import { ReorderPropertyImagesDto } from './dto/reorder-property-images.dto';
 import { NearbyPropertyDto } from './dto/nearby-property.dto';
 
 @Controller('property')
 export class PropertyController {
-  constructor(private readonly propertyService: PropertyService) { }
+  constructor(
+    private readonly propertyService: PropertyService,
+    private readonly s3Service: S3Service,
+  ) { }
 
   @Post()
   @Roles(Role.AGENT)
@@ -43,7 +47,7 @@ export class PropertyController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     const user = req.user as AuthUser;
-    return this.propertyService.createPropertyWithImages(user.userId, dto, files);
+    return this.propertyService.createPropertyWithImages(user.userId, dto, files, this.s3Service);
   }
 
 
@@ -139,7 +143,7 @@ export class PropertyController {
   @Roles(Role.AGENT)
   @UseGuards(AccessTokenGuard, RolesGuard)
   @UseInterceptors(
-    FilesInterceptor('files', 12, makePropertyImagesStorageConfig((req) => req.params.id)),
+    FilesInterceptor('files', 12, makePropertyImagesStorageConfig()),
   )
   async uploadPropertyImages(
     @Req() req: Request,
@@ -148,7 +152,7 @@ export class PropertyController {
   ) {
     const user = req.user as AuthUser;
     const propertyId = Number(id);
-    return this.propertyService.addPropertyImages(user.userId, propertyId, files);
+    return this.propertyService.addPropertyImages(user.userId, propertyId, files, this.s3Service);
   }
 
   @Delete(':propertyId/images/:imageId')
@@ -162,7 +166,7 @@ export class PropertyController {
     const user = req.user as AuthUser;
     const propertyId = Number(propertyIdParam);
     const imageId = Number(imageIdParam);
-    return this.propertyService.deletePropertyImage(user.userId, propertyId, imageId);
+    return this.propertyService.deletePropertyImage(user.userId, propertyId, imageId, this.s3Service);
   }
 
   @Patch(':propertyId/images/reorder')

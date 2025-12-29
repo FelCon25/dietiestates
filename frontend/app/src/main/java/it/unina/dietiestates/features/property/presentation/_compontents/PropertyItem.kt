@@ -43,8 +43,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import it.unina.dietiestates.BuildConfig.BASE_URL
 import it.unina.dietiestates.R
+import it.unina.dietiestates.core.presentation.util.parseImageUrl
 import it.unina.dietiestates.features.agency.domain.getEmptyAgency
 import it.unina.dietiestates.features.property.domain.InsertionType
 import it.unina.dietiestates.features.property.domain.Property
@@ -78,7 +78,7 @@ fun PropertyItem(
                 if (property.images.isNotEmpty()) {
                     AsyncImage(
                         modifier = Modifier.fillMaxSize(),
-                        model = "${BASE_URL}${property.images.first()}",
+                        model = parseImageUrl(property.images.first()),
                         contentDescription = null,
                         contentScale = ContentScale.Crop
                     )

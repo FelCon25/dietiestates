@@ -1,9 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-//import path, { join } from 'path';
-import * as path from 'path';
-import * as fs from 'fs';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class UserService {
@@ -68,28 +66,33 @@ export class UserService {
         return updatedUser;
     }
 
-    async updateProfilePic(userId: number, imagePath: string): Promise<void> {
+    async updateProfilePic(userId: number, imageUrl: string, s3Service: S3Service): Promise<void> {
         const user = await this.prisma.user.findUnique({ where: { userId } });
         if (!user) {
             throw new NotFoundException('User not found');
         }
 
-        if(user.profilePic){
-            await this.deleteProfilePicIfExists(user.profilePic);
+        // Delete old profile pic from S3 if exists
+        if (user.profilePic) {
+            await this.deleteProfilePicFromS3(user.profilePic, s3Service);
         }
 
         await this.prisma.user.update({
             where: { userId },
-            data: { profilePic: imagePath },
+            data: { profilePic: imageUrl },
         });
     }
 
-    private async deleteProfilePicIfExists(profilePicPath: string) {
-        if(!profilePicPath) return;
+    private async deleteProfilePicFromS3(profilePicUrl: string, s3Service: S3Service): Promise<void> {
+        if (!profilePicUrl) return;
 
-        const filePath = path.join(process.cwd(), profilePicPath);
-        if(fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        const s3Key = s3Service.extractKeyFromUrl(profilePicUrl);
+        if (s3Key) {
+            try {
+                await s3Service.deleteFile(s3Key);
+            } catch (_) {
+                // Ignore S3 delete errors
+            }
         }
     }
 }

@@ -411,13 +411,22 @@ export class AuthService {
             throw new NotFoundException('User not found');
         }
 
-        // Verifica che la password corrente sia corretta
+        // Verify current session exists and belongs to user
+        const session = await this.prisma.session.findUnique({
+            where: { sessionId: currentSessionId }
+        });
+
+        if (!session || session.userId !== userId) {
+            throw new NotFoundException('Session not found');
+        }
+
+        // Verify current password is correct
         const passwordMatches = await bcrypt.compare(currentPassword, user.password);
         if (!passwordMatches) {
             throw new BadRequestException('Current password is incorrect');
         }
 
-        // Hash della nuova password
+        // Hash the new password
         const hashedPassword = await this.hashData(newPassword);
         await this.prisma.user.update({
             where: { userId: user.userId },

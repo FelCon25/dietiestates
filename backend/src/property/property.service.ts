@@ -3,9 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { SearchPropertyDto } from './dto/search-property.dto';
 import { Prisma, PropertyImage } from '@prisma/client';
-import * as path from 'path';
-import * as fs from 'fs';
 import { NearbyPropertyDto } from './dto/nearby-property.dto';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class PropertyService {
@@ -15,7 +14,8 @@ export class PropertyService {
   async createPropertyWithImages(
     agentUserId: number,
     dto: CreatePropertyDto,
-    files?: Express.Multer.File[]
+    files?: Express.Multer.File[],
+    s3Service?: S3Service,
   ) {
     const agentOrAdmin = await this.validateAgentAndAgency(agentUserId);
 
@@ -28,8 +28,8 @@ export class PropertyService {
         },
       });
 
-      if (files?.length) {
-        await this.processPropertyImages(tx, property.propertyId, files);
+      if (files?.length && s3Service) {
+        await this.processPropertyImages(tx, property.propertyId, files, s3Service);
       }
 
       return this.getPropertyWithDetails(tx, property.propertyId);
@@ -53,28 +53,26 @@ export class PropertyService {
   private async processPropertyImages(
     tx: any,
     propertyId: number,
-    files: Express.Multer.File[]
+    files: Express.Multer.File[],
+    s3Service: S3Service,
   ) {
-    const imageData = await this.moveFilesToPropertyDirectory(propertyId, files);
+    const imageData = await this.uploadFilesToS3(propertyId, files, s3Service);
     await tx.propertyImage.createMany({ data: imageData });
-    this.cleanupTempDirectory(files[0]);
   }
 
 
-  private async moveFilesToPropertyDirectory(
+  private async uploadFilesToS3(
     propertyId: number,
-    files: Express.Multer.File[]
+    files: Express.Multer.File[],
+    s3Service: S3Service,
   ): Promise<Array<{ propertyId: number; url: string; order: number }>> {
-    const propertyImageDir = path.join('uploads', 'property-images', String(propertyId));
-    this.ensureDirectoryExists(propertyImageDir);
+    const uploadPromises = files.map(async (file, index) => {
+      const timestamp = Date.now();
+      const ext = this.getFileExtension(file.originalname);
+      const baseName = this.sanitizeFilename(file.originalname);
+      const key = `property-images/${propertyId}/${baseName}_${timestamp}${ext}`;
 
-    return files.map((file, index) => {
-      const filename = path.basename(file.path);
-      const finalPath = path.join(propertyImageDir, filename);
-
-      this.moveFile(file.path, finalPath);
-
-      const url = path.posix.join('/uploads', 'property-images', String(propertyId), filename);
+      const url = await s3Service.uploadFile(file.buffer, key, file.mimetype);
 
       return {
         propertyId,
@@ -82,35 +80,18 @@ export class PropertyService {
         order: index,
       };
     });
+
+    return Promise.all(uploadPromises);
   }
 
-
-  private ensureDirectoryExists(dirPath: string): void {
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
+  private getFileExtension(filename: string): string {
+    const ext = filename.split('.').pop();
+    return ext ? `.${ext.toLowerCase()}` : '.jpg';
   }
 
-
-  private moveFile(sourcePath: string, destinationPath: string): void {
-    try {
-      fs.renameSync(sourcePath, destinationPath);
-    } catch (error) {
-      fs.copyFileSync(sourcePath, destinationPath);
-      fs.unlinkSync(sourcePath);
-    }
-  }
-
-
-  private cleanupTempDirectory(sampleFile: Express.Multer.File): void {
-    const tempDir = (sampleFile as any).destination;
-    if (tempDir?.includes('temp-property-images')) {
-      try {
-        fs.rmSync(path.dirname(tempDir), { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors - temp files will be cleaned up eventually
-      }
-    }
+  private sanitizeFilename(filename: string): string {
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+    return nameWithoutExt.replace(/[^a-z0-9_-]/gi, '_');
   }
 
 
@@ -547,6 +528,7 @@ export class PropertyService {
     agentUserId: number,
     propertyId: number,
     files: Express.Multer.File[],
+    s3Service: S3Service,
   ) {
     await this.ensureAgentOwnsProperty(agentUserId, propertyId);
 
@@ -555,7 +537,7 @@ export class PropertyService {
     }
 
     const startOrder = await this.getNextImageOrder(propertyId);
-    const imageData = this.buildImageDataForExistingProperty(propertyId, files, startOrder);
+    const imageData = await this.buildImageDataWithS3Upload(propertyId, files, startOrder, s3Service);
 
     await this.prisma.propertyImage.createMany({ data: imageData });
 
@@ -576,29 +558,51 @@ export class PropertyService {
     return existing.length > 0 ? (existing[0].order + 1) : 0;
   }
 
-  private buildImageDataForExistingProperty(
+  private async buildImageDataWithS3Upload(
     propertyId: number,
     files: Express.Multer.File[],
-    startOrder: number
+    startOrder: number,
+    s3Service: S3Service,
   ) {
-    const baseUrlPath = `/uploads/property-images/${propertyId}`;
+    const uploadPromises = files.map(async (file, index) => {
+      const timestamp = Date.now();
+      const ext = this.getFileExtension(file.originalname);
+      const baseName = this.sanitizeFilename(file.originalname);
+      const key = `property-images/${propertyId}/${baseName}_${timestamp}${ext}`;
 
-    return files.map((file, index) => ({
-      propertyId,
-      url: path.posix.join(baseUrlPath, path.basename(file.path)),
-      order: startOrder + index,
-    }));
+      const url = await s3Service.uploadFile(file.buffer, key, file.mimetype);
+
+      return {
+        propertyId,
+        url,
+        order: startOrder + index,
+      };
+    });
+
+    return Promise.all(uploadPromises);
   }
 
-  async deletePropertyImage(agentUserId: number, propertyId: number, imageId: number) {
+  async deletePropertyImage(
+    agentUserId: number,
+    propertyId: number,
+    imageId: number,
+    s3Service: S3Service,
+  ) {
     await this.ensureAgentOwnsProperty(agentUserId, propertyId);
     const image = await this.prisma.propertyImage.findUnique({ where: { imageId } });
     if (!image || image.propertyId !== propertyId) {
       throw new NotFoundException('Image not found');
     }
 
-    const filePath = path.join(process.cwd(), image.url.replace(/^\//, ''));
-    try { fs.unlinkSync(filePath); } catch (_) { }
+    // Delete from S3
+    const s3Key = s3Service.extractKeyFromUrl(image.url);
+    if (s3Key) {
+      try {
+        await s3Service.deleteFile(s3Key);
+      } catch (_) {
+        // Ignore S3 delete errors
+      }
+    }
 
     await this.prisma.propertyImage.delete({ where: { imageId } });
 

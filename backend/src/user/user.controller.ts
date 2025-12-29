@@ -17,11 +17,15 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { makeProfilePicStorageConfig } from 'src/utils/multer.config';
 import { Request } from 'express';
 import { AuthUser } from 'src/types/auth-user.interface';
+import { S3Service } from 'src/s3/s3.service';
 
 @Controller('users')
 @UseGuards(AccessTokenGuard)
 export class UserController {
-    constructor(private readonly userService: UserService) { }
+    constructor(
+        private readonly userService: UserService,
+        private readonly s3Service: S3Service,
+    ) { }
 
     @Get('me')
     async getProfile(@Req() req: Request) {
@@ -39,7 +43,7 @@ export class UserController {
     }
 
     @Patch('me/profile-pic')
-    @UseInterceptors(FileInterceptor('file', makeProfilePicStorageConfig((req) => (req.user as AuthUser).userId)))
+    @UseInterceptors(FileInterceptor('file', makeProfilePicStorageConfig()))
     async updateProfilePic(
         @UploadedFile() file: Express.Multer.File,
         @Req() req: Request,
@@ -49,10 +53,19 @@ export class UserController {
         }
 
         const authUser = req.user as AuthUser;
-        const imagePath = `/uploads/profile-pics/${authUser.userId}/${file.filename}`;
+        const userId = Number(authUser.userId);
 
-        await this.userService.updateProfilePic(Number(authUser.userId), imagePath);
+        // Generate S3 key
+        const timestamp = Date.now();
+        const ext = file.originalname.split('.').pop()?.toLowerCase() || 'jpg';
+        const key = `profile-pics/${userId}/${timestamp}.${ext}`;
+
+        // Upload to S3
+        const imageUrl = await this.s3Service.uploadFile(file.buffer, key, file.mimetype);
+
+        // Update user profile with new S3 URL
+        await this.userService.updateProfilePic(userId, imageUrl, this.s3Service);
         
-        return { profilePic: imagePath };
+        return { profilePic: imageUrl };
     }
 }

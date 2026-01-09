@@ -1,0 +1,6 @@
+projectKey=Dietiestates
+serverUrl=http://localhost:9000
+serverVersion=26.1.0.118079
+dashboardUrl=http://localhost:9000/dashboard?id=Dietiestates
+ceTaskId=84f299b5-f983-4155-abbd-d9ccbbbe32fa
+ceTaskUrl=http://localhost:9000/api/ce/task?id=84f299b5-f983-4155-abbd-d9ccbbbe32fa

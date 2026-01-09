@@ -91,7 +91,7 @@ export class PropertyService {
 
   private sanitizeFilename(filename: string): string {
     const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
-    return nameWithoutExt.replace(/[^a-z0-9_-]/gi, '_');
+    return nameWithoutExt.replaceAll(/[^a-z0-9_-]/gi, '_');
   }
 
 
@@ -289,92 +289,10 @@ export class PropertyService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
-
-    // sorting logic
     const sortBy = dto.sortBy ?? 'createdAt';
     const sortOrder = dto.sortOrder ?? 'desc';
 
-    //filters
-    const where: Prisma.PropertyWhereInput = {};
-
-    if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
-      where.price = {};
-      if (dto.minPrice !== undefined) where.price.gte = dto.minPrice;
-      if (dto.maxPrice !== undefined) where.price.lte = dto.maxPrice;
-    }
-
-    if (dto.locationSearch) {
-      where.OR = [
-        { city: { contains: dto.locationSearch, mode: 'insensitive' } },
-        { province: { contains: dto.locationSearch, mode: 'insensitive' } },
-        { address: { contains: dto.locationSearch, mode: 'insensitive' } },
-        { postalCode: { contains: dto.locationSearch, mode: 'insensitive' } },
-      ];
-    } else {
-      if (dto.city) {
-        where.city = { contains: dto.city, mode: 'insensitive' };
-      }
-
-      if (dto.country) {
-        where.country = { contains: dto.country, mode: 'insensitive' };
-      }
-
-      if (dto.postalCode) {
-        where.postalCode = { contains: dto.postalCode, mode: 'insensitive' };
-      }
-
-      if (dto.province) {
-        where.province = { contains: dto.province, mode: 'insensitive' };
-      }
-
-      if (dto.address) {
-        where.address = { contains: dto.address, mode: 'insensitive' };
-      }
-    }
-
-    if (dto.minSurfaceArea !== undefined || dto.maxSurfaceArea !== undefined) {
-      where.surfaceArea = {};
-      if (dto.minSurfaceArea !== undefined) where.surfaceArea.gte = dto.minSurfaceArea;
-      if (dto.maxSurfaceArea !== undefined) where.surfaceArea.lte = dto.maxSurfaceArea;
-    }
-
-    if (dto.minRooms !== undefined || dto.maxRooms !== undefined) {
-      where.rooms = {};
-      if (dto.minRooms !== undefined) where.rooms.gte = dto.minRooms;
-      if (dto.maxRooms !== undefined) where.rooms.lte = dto.maxRooms;
-    }
-
-    if (dto.type) {
-      where.propertyType = dto.type;
-    }
-
-    if (dto.insertionType) {
-      where.insertionType = dto.insertionType;
-    }
-
-    if (dto.propertyCondition) {
-      where.propertyCondition = dto.propertyCondition;
-    }
-
-    if (dto.elevator !== undefined) {
-      where.elevator = dto.elevator;
-    }
-
-    if (dto.airConditioning !== undefined) {
-      where.airConditioning = dto.airConditioning;
-    }
-
-    if (dto.concierge !== undefined) {
-      where.concierge = dto.concierge;
-    }
-
-    if (dto.furnished !== undefined) {
-      where.furnished = dto.furnished;
-    }
-
-    if (dto.energyClass) {
-      where.energyClass = { contains: dto.energyClass, mode: 'insensitive' };
-    }
+    const where = this.buildSearchWhereClause(dto);
 
     const [items, total] = await Promise.all([
       this.prisma.property.findMany({
@@ -413,9 +331,162 @@ export class PropertyService {
     };
   }
 
+  private buildSearchWhereClause(dto: SearchPropertyDto): Prisma.PropertyWhereInput {
+    const where: Prisma.PropertyWhereInput = {};
+
+    this.applyPriceFilters(where, dto);
+    this.applyLocationFilters(where, dto);
+    this.applySurfaceAreaFilters(where, dto);
+    this.applyRoomFilters(where, dto);
+    this.applyPropertyTypeFilters(where, dto);
+    this.applyBooleanFilters(where, dto);
+    this.applyEnergyClassFilter(where, dto);
+
+    return where;
+  }
+
+  private applyPriceFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
+      where.price = {};
+      if (dto.minPrice !== undefined) where.price.gte = dto.minPrice;
+      if (dto.maxPrice !== undefined) where.price.lte = dto.maxPrice;
+    }
+  }
+
+  private applyLocationFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.locationSearch) {
+      where.OR = [
+        { city: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { province: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { address: { contains: dto.locationSearch, mode: 'insensitive' } },
+        { postalCode: { contains: dto.locationSearch, mode: 'insensitive' } },
+      ];
+      return;
+    }
+
+    if (dto.city) {
+      where.city = { contains: dto.city, mode: 'insensitive' };
+    }
+    if (dto.country) {
+      where.country = { contains: dto.country, mode: 'insensitive' };
+    }
+    if (dto.postalCode) {
+      where.postalCode = { contains: dto.postalCode, mode: 'insensitive' };
+    }
+    if (dto.province) {
+      where.province = { contains: dto.province, mode: 'insensitive' };
+    }
+    if (dto.address) {
+      where.address = { contains: dto.address, mode: 'insensitive' };
+    }
+  }
+
+  private applySurfaceAreaFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.minSurfaceArea !== undefined || dto.maxSurfaceArea !== undefined) {
+      where.surfaceArea = {};
+      if (dto.minSurfaceArea !== undefined) where.surfaceArea.gte = dto.minSurfaceArea;
+      if (dto.maxSurfaceArea !== undefined) where.surfaceArea.lte = dto.maxSurfaceArea;
+    }
+  }
+
+  private applyRoomFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.minRooms !== undefined || dto.maxRooms !== undefined) {
+      where.rooms = {};
+      if (dto.minRooms !== undefined) where.rooms.gte = dto.minRooms;
+      if (dto.maxRooms !== undefined) where.rooms.lte = dto.maxRooms;
+    }
+  }
+
+  private applyPropertyTypeFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.type) {
+      where.propertyType = dto.type;
+    }
+    if (dto.insertionType) {
+      where.insertionType = dto.insertionType;
+    }
+    if (dto.propertyCondition) {
+      where.propertyCondition = dto.propertyCondition;
+    }
+  }
+
+  private applyBooleanFilters(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.elevator !== undefined) {
+      where.elevator = dto.elevator;
+    }
+    if (dto.airConditioning !== undefined) {
+      where.airConditioning = dto.airConditioning;
+    }
+    if (dto.concierge !== undefined) {
+      where.concierge = dto.concierge;
+    }
+    if (dto.furnished !== undefined) {
+      where.furnished = dto.furnished;
+    }
+  }
+
+  private applyEnergyClassFilter(
+    where: Prisma.PropertyWhereInput,
+    dto: SearchPropertyDto,
+  ): void {
+    if (dto.energyClass) {
+      where.energyClass = { contains: dto.energyClass, mode: 'insensitive' };
+    }
+  }
+
   async getNearbyProperties(dto: NearbyPropertyDto) {
     const radiusMeters = (dto.radiusKm ?? 1) * 1000;
+    const extraClauses = this.buildNearbyPropertiesFilters(dto);
 
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT 
+        p."propertyId" as "propertyId",
+        CAST(p."latitude" AS double precision) as latitude,
+        CAST(p."longitude" AS double precision) as longitude,
+        CAST(p."price" AS double precision) as price,
+        p."insertionType" as "insertionType",
+        ST_Distance(
+          geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
+          geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326))
+        ) AS distance_m
+      FROM properties p
+      WHERE ST_DWithin(
+        geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
+        geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326)),
+        ${radiusMeters}
+      )
+      ${Prisma.join(extraClauses, '')}
+      ORDER BY distance_m ASC
+    `);
+
+    return rows.map(r => ({
+      propertyId: r.propertyId,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      price: r.price,
+      insertionType: r.insertionType,
+      distanceMeters: r.distance_m,
+    }));
+  }
+
+  private buildNearbyPropertiesFilters(dto: NearbyPropertyDto): Prisma.Sql[] {
     const extraClauses: Prisma.Sql[] = [];
 
     if (dto.insertionType) {
@@ -467,37 +538,8 @@ export class PropertyService {
       extraClauses.push(Prisma.sql` AND p."agentId" = ${dto.agentId} `);
     }
 
-    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT 
-        p."propertyId" as "propertyId",
-        CAST(p."latitude" AS double precision) as latitude,
-        CAST(p."longitude" AS double precision) as longitude,
-        CAST(p."price" AS double precision) as price,
-        p."insertionType" as "insertionType",
-        ST_Distance(
-          geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
-          geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326))
-        ) AS distance_m
-      FROM properties p
-      WHERE ST_DWithin(
-        geography(ST_SetSRID(ST_MakePoint(CAST(p."longitude" AS double precision), CAST(p."latitude" AS double precision)), 4326)),
-        geography(ST_SetSRID(ST_MakePoint(${dto.longitude}, ${dto.latitude}), 4326)),
-        ${radiusMeters}
-      )
-      ${Prisma.join(extraClauses, '')}
-      ORDER BY distance_m ASC
-    `);
-
-    return rows.map(r => ({
-      propertyId: r.propertyId,
-      latitude: r.latitude,
-      longitude: r.longitude,
-      price: r.price,
-      insertionType: r.insertionType,
-      distanceMeters: r.distance_m,
-    }));
+    return extraClauses;
   }
-
 
   private async ensureAgentOwnsProperty(userId: number, propertyId: number) {
     const property = await this.prisma.property.findUnique({

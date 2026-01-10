@@ -168,7 +168,7 @@ fun HomeScreen(
                                 .weight(1f)
                                 .fillMaxHeight(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-                            onClick = { }
+                            onClick = onSearchNearYouNavigation
                         ) {
                             Column(
                                 modifier = Modifier.fillMaxSize(),

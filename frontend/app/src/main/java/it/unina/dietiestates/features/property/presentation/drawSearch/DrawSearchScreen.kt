@@ -100,13 +100,15 @@ fun DrawSearchScreen(
     appliedFilters: NearbyFilters? = null,
     onFiltersConsumed: () -> Unit = {},
     initialRadius: Float = 10000f,
-    onPropertyDetailsNavigate: (Int) -> Unit
+    onPropertyDetailsNavigate: (Int) -> Unit,
+    centerOnCurrentLocation: Boolean = false
 ) {
     var sliderPosition by remember { mutableFloatStateOf(initialRadius) }
     var hasSearched by remember { mutableStateOf(false) }
     var nearbyFilters by remember { mutableStateOf(NearbyFilters(insertionType = "SALE")) }
     var propertyClickCounter by remember { mutableStateOf(0) }
     var shouldAnimateToLocation by remember { mutableStateOf(false) }
+    var hasRequestedInitialLocation by remember { mutableStateOf(false) }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(ROME_LAT, ROME_LNG), 9f)
@@ -133,6 +135,14 @@ fun DrawSearchScreen(
         }
     )
 
+    // Auto-request location if centerOnCurrentLocation is true
+    LaunchedEffect(centerOnCurrentLocation) {
+        if (centerOnCurrentLocation && !hasRequestedInitialLocation) {
+            hasRequestedInitialLocation = true
+            locationPermissionState.requestPermission()
+        }
+    }
+
     LaunchedEffect(currentLocation, shouldAnimateToLocation) {
         if (shouldAnimateToLocation && currentLocation != null) {
             val location = currentLocation!!
@@ -148,18 +158,25 @@ fun DrawSearchScreen(
         }
     }
 
+    // Use derivedStateOf with stable references to reduce recompositions
     val currentCenter by remember { derivedStateOf { cameraPositionState.position.target } }
     val currentZoom by remember { derivedStateOf { cameraPositionState.position.zoom } }
     val showPrice by remember { derivedStateOf { currentZoom >= PRICE_ZOOM_THRESHOLD } }
+    val isMapMoving by remember { derivedStateOf { cameraPositionState.isMoving } }
     
-    val radiusInPixels = remember(sliderPosition, currentCenter, currentZoom) {
-        with(density) {
-            val metersPerPixelAtEquator = 156543.03392
-            val latitudeCorrectionFactor = cos(currentCenter.latitude * PI / 180)
-            val zoomFactor = 2.0.pow(currentZoom.toDouble())
-            val metersPerPixel = (metersPerPixelAtEquator * latitudeCorrectionFactor) / zoomFactor
-            val radiusPixels = sliderPosition / metersPerPixel
-            radiusPixels.toFloat().dp
+    // Only recalculate radius when slider changes, not during camera movement
+    val radiusInPixels by remember(sliderPosition) {
+        derivedStateOf {
+            with(density) {
+                val zoom = cameraPositionState.position.zoom
+                val lat = cameraPositionState.position.target.latitude
+                val metersPerPixelAtEquator = 156543.03392
+                val latitudeCorrectionFactor = cos(lat * PI / 180)
+                val zoomFactor = 2.0.pow(zoom.toDouble())
+                val metersPerPixel = (metersPerPixelAtEquator * latitudeCorrectionFactor) / zoomFactor
+                val radiusPixels = sliderPosition / metersPerPixel
+                radiusPixels.toFloat().dp
+            }
         }
     }
 
@@ -265,42 +282,58 @@ fun DrawSearchScreen(
                         .weight(1f)
                         .background(Color.Gray)
                 ) {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        onMapClick = { viewModel.clearSelectedProperty() },
-                        properties = MapProperties(
+                    // Memoize map properties and settings to prevent unnecessary recompositions
+                    val mapProperties = remember {
+                        MapProperties(
                             mapStyleOptions = MapStyleOptions(
                                 """[{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"transit","stylers":[{"visibility":"off"}]}]"""
                             ),
                             isMyLocationEnabled = false
-                        ),
-                        uiSettings = MapUiSettings(
+                        )
+                    }
+                    
+                    val mapUiSettings = remember {
+                        MapUiSettings(
                             zoomControlsEnabled = false,
                             myLocationButtonEnabled = false,
                             mapToolbarEnabled = false,
                             zoomGesturesEnabled = true,
                             scrollGesturesEnabled = true,
-                            tiltGesturesEnabled = false
+                            tiltGesturesEnabled = false,
+                            rotationGesturesEnabled = false,
+                            compassEnabled = false
                         )
+                    }
+
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        onMapClick = { viewModel.clearSelectedProperty() },
+                        properties = mapProperties,
+                        uiSettings = mapUiSettings
                     ) {
                         if (hasSearched && pins.isNotEmpty()) {
-                            // Limit number of markers for performance - only show closest ones if too many
-                            val maxMarkers = 100
-                            val visiblePins = if (pins.size > maxMarkers) {
-                                // Show markers closest to center
-                                pins.sortedBy { pin ->
-                                    val dx = pin.latitude - currentCenter.latitude
-                                    val dy = pin.longitude - currentCenter.longitude
-                                    dx * dx + dy * dy
-                                }.take(maxMarkers)
-                            } else {
-                                pins
+                            // Limit markers and use stable sorting
+                            val maxMarkers = 80
+                            val visiblePins = remember(pins, maxMarkers) {
+                                if (pins.size > maxMarkers) {
+                                    pins.take(maxMarkers)
+                                } else {
+                                    pins
+                                }
                             }
                             
+                            // Pre-compute icons based on current zoom level
+                            val currentShowPrice = showPrice
+                            
                             visiblePins.forEach { pin ->
-                                // Cache descriptors to avoid recreating them
-                                val descriptorKey = if (showPrice) {
+                                // Use stable key for marker state
+                                val markerState = remember(pin.propertyId, pin.latitude, pin.longitude) { 
+                                    MarkerState(position = LatLng(pin.latitude, pin.longitude))
+                                }
+                                
+                                // Cache descriptors with stable keys
+                                val descriptorKey = if (currentShowPrice) {
                                     if (pin.insertionType == "RENT") {
                                         "price_R${pin.price.toInt()}"
                                     } else {
@@ -310,29 +343,30 @@ fun DrawSearchScreen(
                                     if (pin.insertionType == "RENT") "dot_rent" else "dot_sale"
                                 }
                                 
-                                val icon = descriptorCache.getOrPut(descriptorKey) {
-                                    if (showPrice) {
-                                        val priceKey = if (pin.insertionType == "RENT") {
-                                            "R${pin.price.toInt()}"
+                                val icon = remember(descriptorKey) {
+                                    descriptorCache.getOrPut(descriptorKey) {
+                                        if (currentShowPrice) {
+                                            val priceKey = if (pin.insertionType == "RENT") {
+                                                "R${pin.price.toInt()}"
+                                            } else {
+                                                "S${(pin.price / 1000).toInt()}"
+                                            }
+                                            val cachedBitmap = priceBadgeCache.getOrPut(priceKey) {
+                                                createPriceBadgeBitmap(pin.price, pin.insertionType)
+                                            }
+                                            BitmapDescriptorFactory.fromBitmap(cachedBitmap)
                                         } else {
-                                            "S${(pin.price / 1000).toInt()}"
+                                            BitmapDescriptorFactory.fromBitmap(
+                                                if (pin.insertionType == "RENT") rentDot else saleDot
+                                            )
                                         }
-                                        val cachedBitmap = priceBadgeCache.getOrPut(priceKey) {
-                                            createPriceBadgeBitmap(pin.price, pin.insertionType)
-                                        }
-                                        BitmapDescriptorFactory.fromBitmap(cachedBitmap)
-                                    } else {
-                                        BitmapDescriptorFactory.fromBitmap(
-                                            if (pin.insertionType == "RENT") rentDot else saleDot
-                                        )
                                     }
                                 }
                                 
                                 Marker(
-                                    state = remember(pin.propertyId) { 
-                                        MarkerState(position = LatLng(pin.latitude, pin.longitude))
-                                    },
+                                    state = markerState,
                                     icon = icon,
+                                    flat = true,
                                     onClick = {
                                         propertyClickCounter++
                                         viewModel.loadPropertyById(pin.propertyId)
@@ -342,7 +376,7 @@ fun DrawSearchScreen(
                                                     LatLng(pin.latitude, pin.longitude),
                                                     16f
                                                 ),
-                                                durationMs = 500
+                                                durationMs = 400
                                             )
                                         }
                                         true
@@ -352,49 +386,34 @@ fun DrawSearchScreen(
                         }
                     }
 
-                    // Optimized overlay - only redraw when radius actually changes
-                    key(radiusInPixels) {
-                        Canvas(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            val centerX = size.width * 0.5f
-                            val centerY = size.height * 0.5f
-                            val radiusPx = radiusInPixels.toPx()
-                            
-                            // Create a path that fills everything except the circle using EvenOdd rule
-                            val path = androidx.compose.ui.graphics.Path().apply {
-                                fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
-                                addRect(
-                                    androidx.compose.ui.geometry.Rect(
-                                        left = 0f,
-                                        top = 0f,
-                                        right = size.width,
-                                        bottom = size.height
-                                    )
-                                )
-                                addOval(
-                                    androidx.compose.ui.geometry.Rect(
-                                        left = centerX - radiusPx,
-                                        top = centerY - radiusPx,
-                                        right = centerX + radiusPx,
-                                        bottom = centerY + radiusPx
-                                    )
-                                )
-                            }
-                            
-                            drawPath(
-                                path = path,
-                                color = Color.Black.copy(alpha = 0.4f),
-                                style = androidx.compose.ui.graphics.drawscope.Fill
-                            )
-                            
-                            drawCircle(
-                                color = Green80.copy(alpha = 0.6f),
-                                radius = radiusPx,
-                                center = Offset(centerX, centerY),
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                            )
-                        }
+                    // Optimized overlay with hardware layer for smoother rendering
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    ) {
+                        val centerX = size.width * 0.5f
+                        val centerY = size.height * 0.5f
+                        val radiusPx = radiusInPixels.toPx()
+                        
+                        // Draw dark overlay
+                        drawRect(color = Color.Black.copy(alpha = 0.4f))
+                        
+                        // Cut out transparent circle
+                        drawCircle(
+                            color = Color.Transparent,
+                            radius = radiusPx,
+                            center = Offset(centerX, centerY),
+                            blendMode = BlendMode.Clear
+                        )
+                        
+                        // Draw circle border
+                        drawCircle(
+                            color = Green80.copy(alpha = 0.6f),
+                            radius = radiusPx,
+                            center = Offset(centerX, centerY),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                        )
                     }
 
                     if (isLoading) {

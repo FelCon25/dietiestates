@@ -1,10 +1,28 @@
 version: '3.9'
 services:
-  db:
+  app:
     build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://donantonio:lasonrisa@db:5432/dietiestates
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgis/postgis:17-3.5
     ports:
       - "1926:5432"
     environment:
       POSTGRES_USER: donantonio
       POSTGRES_PASSWORD: lasonrisa
       POSTGRES_DB: dietiestates
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

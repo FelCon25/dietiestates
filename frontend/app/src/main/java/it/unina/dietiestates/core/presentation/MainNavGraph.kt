@@ -44,6 +44,7 @@ import it.unina.dietiestates.features.property.domain.SearchFilters
 import it.unina.dietiestates.features.property.domain.toNearbyFilters
 import it.unina.dietiestates.features.property.domain.toSearchFilters
 import androidx.compose.runtime.LaunchedEffect
+import androidx.navigation.toRoute
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -176,10 +177,10 @@ private fun NavGraphBuilder.userScreens(
                 topBar = topBar,
                 bottomBar = bottomBar,
                 onDrawSearchNavigation = {
-                    navController.navigate(Route.DrawSearch)
+                    navController.navigate(Route.DrawSearch())
                 },
                 onSearchNearYouNavigation = {
-                    navController.navigate(Route.Search)
+                    navController.navigate(Route.DrawSearch(centerOnCurrentLocation = true))
                 },
                 onPropertyDetailsNavigate = { propertyId ->
                     navController.navigate(Route.PropertyDetails(propertyId))
@@ -392,7 +393,8 @@ private fun NavGraphBuilder.userScreens(
             }
         }
 
-        composable<Route.DrawSearch> {
+        composable<Route.DrawSearch> { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.DrawSearch>()
             var appliedFilters by remember { mutableStateOf<NearbyFilters?>(null) }
             var currentFilters by remember { mutableStateOf(NearbyFilters(insertionType = "SALE")) }
             var currentRadius by remember { mutableStateOf(10000f) }
@@ -432,7 +434,8 @@ private fun NavGraphBuilder.userScreens(
                 initialRadius = currentRadius,
                 onPropertyDetailsNavigate = { propertyId ->
                     navController.navigate(Route.PropertyDetails(propertyId))
-                }
+                },
+                centerOnCurrentLocation = route.centerOnCurrentLocation
             )
 
             LaunchedEffect(handle) {

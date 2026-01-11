@@ -64,8 +64,8 @@ class RemotePropertyDataSourceImpl(
                     append("latitude", property.latitude.toString())
                     append("longitude", property.longitude.toString())
                     append("agentId", property.agentId.toString())
-                    append("furnished", property.furnished.toString())
-                    append("propertyCondition", property.propertyCondition)
+                    property.furnished?.let { append("furnished", it.toString()) }
+                    property.propertyCondition?.let { append("propertyCondition", it) }
                 }
             )
         }

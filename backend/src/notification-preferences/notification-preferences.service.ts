@@ -29,8 +29,7 @@ export class NotificationPreferencesService {
         }
     }
 
-    async sendPromotionalNotification() {
-        //retrieve all tokens from the sessions of the users who have enabled promotional notifications
+    async sendPromotionalNotification(title?: string, body?: string) {
         const tokens = await this.prisma.session.findMany({
             where: {
                 user: {
@@ -47,13 +46,12 @@ export class NotificationPreferencesService {
         
         const message = {
             notification: {
-                title: 'Special Offer!',
-                body: 'Check out our latest promotions and deals.'
+                title: title || 'Special Offer!',
+                body: body || 'Check out our latest promotions and deals.'
             },
             tokens: tokens
         };
 
-        //send notification using firebase admin sdk
         try{
             const response = await admin.messaging().sendEachForMulticast(message);
             return {

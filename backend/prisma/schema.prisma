@@ -155,18 +155,21 @@ model SavedSearch {
   maxSurfaceArea    Int?
   minRooms          Int?
   maxRooms          Int?
-  propertyCondition PropertyCondition?//
+  propertyCondition PropertyCondition?
   elevator          Boolean?
   airConditioning   Boolean?
   concierge         Boolean?
   energyClass       String?
-  furnished         Boolean?//
-  propertyType      PropertyType?//
+  furnished         Boolean?
+  propertyType      PropertyType?
   insertionType     InsertionType?
   minPrice          Decimal?
   maxPrice          Decimal?
   name              String
+  lastNotifiedAt    DateTime?
   user              User          @relation(fields: [userId], references: [userId])
+
+  @@map("saved_searches")
 }
 
 model PropertyImage {

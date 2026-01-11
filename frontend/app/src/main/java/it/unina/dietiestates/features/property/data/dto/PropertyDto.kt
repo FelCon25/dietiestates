@@ -27,8 +27,8 @@ data class PropertyDto(
     val latitude: Double,
     val longitude: Double,
     val agentId: Int,
-    val furnished: Boolean,
-    val propertyCondition: String,
+    val furnished: Boolean?,
+    val propertyCondition: String?,
     val createdAt: String,
     val images: List<String>,
     val agency: AgencyDto

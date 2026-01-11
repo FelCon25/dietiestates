@@ -21,7 +21,7 @@ class RemoteGeocodeDataSourceImpl(
                     parameters.append("address", query)
                     parameters.append("key", BuildConfig.MAPS_API_KEY)
                     parameters.append("components", "country:it")
-                    parameters.append("language", "it")
+                    parameters.append("language", "en")
                 }
             }
         }
@@ -42,6 +42,7 @@ class RemoteGeocodeDataSourceImpl(
                     parameters.append("address", "$route $streetNumber $city $province $postalCode")
                     parameters.append("key", BuildConfig.MAPS_API_KEY)
                     parameters.append("components", "country:it")
+                    parameters.append("language", "en")
                 }
             }
         }

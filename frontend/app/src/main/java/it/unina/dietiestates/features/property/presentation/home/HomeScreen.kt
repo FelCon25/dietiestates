@@ -68,6 +68,7 @@ fun HomeScreen(
     topBar: @Composable () -> Unit,
     bottomBar: @Composable (Route, () -> Unit) -> Unit,
     onDrawSearchNavigation: () -> Unit,
+    onSearchPropertyNavigation: () -> Unit,
     onSearchNearYouNavigation: () -> Unit,
     onPropertyDetailsNavigate: (Int) -> Unit = {}
 ) {
@@ -108,7 +109,7 @@ fun HomeScreen(
                             .fillMaxWidth()
                             .height(48.dp)
                             .background(MaterialTheme.colorScheme.background, ShapeDefaults.Small)
-                            .clickable { onSearchNearYouNavigation() }
+                            .clickable { onSearchPropertyNavigation() }
                             .padding(horizontal = 10.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {

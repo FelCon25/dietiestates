@@ -108,16 +108,18 @@ fun PropertyItem(
                     fontSize = 12.sp
                 )
 
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
-                        .background(Color.Black.copy(alpha = .35f), shape = ShapeDefaults.Small)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    text = property.propertyCondition.name.replace('_', ' '),
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
+                property.propertyCondition?.let { condition ->
+                    Text(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = .35f), shape = ShapeDefaults.Small)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        text = condition.name.replace('_', ' '),
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

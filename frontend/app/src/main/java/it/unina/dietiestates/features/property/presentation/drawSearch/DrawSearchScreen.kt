@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -121,6 +126,7 @@ fun DrawSearchScreen(
     val pins = state.pins
     val isLoading = state.isLoading
     val selectedProperty = state.selectedProperty
+    val selectedProperties = state.selectedProperties
     val isLoadingProperty = state.isLoadingProperty
     val currentLocation = state.currentLocation
     val isLoadingLocation = state.isLoadingLocation
@@ -135,7 +141,6 @@ fun DrawSearchScreen(
         }
     )
 
-    // Auto-request location if centerOnCurrentLocation is true
     LaunchedEffect(centerOnCurrentLocation) {
         if (centerOnCurrentLocation && !hasRequestedInitialLocation) {
             hasRequestedInitialLocation = true
@@ -164,18 +169,25 @@ fun DrawSearchScreen(
     val showPrice by remember { derivedStateOf { currentZoom >= PRICE_ZOOM_THRESHOLD } }
     val isMapMoving by remember { derivedStateOf { cameraPositionState.isMoving } }
     
+    // Cluster pins that are very close together
+    val clusteredPins by remember(pins, currentZoom) {
+        derivedStateOf {
+            clusterPins(pins, currentZoom)
+        }
+    }
+    
     // Only recalculate radius when slider changes, not during camera movement
     val radiusInPixels by remember(sliderPosition) {
         derivedStateOf {
-            with(density) {
+        with(density) {
                 val zoom = cameraPositionState.position.zoom
                 val lat = cameraPositionState.position.target.latitude
-                val metersPerPixelAtEquator = 156543.03392
+            val metersPerPixelAtEquator = 156543.03392
                 val latitudeCorrectionFactor = cos(lat * PI / 180)
                 val zoomFactor = 2.0.pow(zoom.toDouble())
-                val metersPerPixel = (metersPerPixelAtEquator * latitudeCorrectionFactor) / zoomFactor
-                val radiusPixels = sliderPosition / metersPerPixel
-                radiusPixels.toFloat().dp
+            val metersPerPixel = (metersPerPixelAtEquator * latitudeCorrectionFactor) / zoomFactor
+            val radiusPixels = sliderPosition / metersPerPixel
+            radiusPixels.toFloat().dp
             }
         }
     }
@@ -217,18 +229,62 @@ fun DrawSearchScreen(
         scaffoldState = bottomSheetState,
         sheetPeekHeight = 0.dp,
         sheetContent = {
-            val property = selectedProperty
             when {
-                property != null -> {
+                selectedProperties.size > 1 -> {
+                    // Multiple properties - show scrollable horizontal list
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${selectedProperties.size} properties in this area",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Green80
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        LazyRow(
+                            state = rememberLazyListState(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+                        ) {
+                            items(
+                                items = selectedProperties,
+                                key = { it.propertyId }
+                            ) { property ->
+                                Box(modifier = Modifier.width(300.dp)) {
+                                    PropertyItem(
+                                        property = property,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = { onPropertyDetailsNavigate(property.propertyId) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                selectedProperty != null -> {
+                    // Single property
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
                         PropertyItem(
-                            property = property,
+                            property = selectedProperty,
                             modifier = Modifier.fillMaxWidth(),
-                            onClick = { onPropertyDetailsNavigate(property.propertyId) }
+                            onClick = { onPropertyDetailsNavigate(selectedProperty.propertyId) }
                         )
                     }
                 }
@@ -305,6 +361,9 @@ fun DrawSearchScreen(
                         )
                     }
 
+                    // Cache for cluster bitmaps
+                    val clusterBitmapCache = remember { mutableMapOf<Int, Bitmap>() }
+
                     GoogleMap(
                         modifier = Modifier.fillMaxSize(),
                         cameraPositionState = cameraPositionState,
@@ -312,38 +371,35 @@ fun DrawSearchScreen(
                         properties = mapProperties,
                         uiSettings = mapUiSettings
                     ) {
-                        if (hasSearched && pins.isNotEmpty()) {
-                            // Limit markers and use stable sorting
-                            val maxMarkers = 80
-                            val visiblePins = remember(pins, maxMarkers) {
-                                if (pins.size > maxMarkers) {
-                                    pins.take(maxMarkers)
-                                } else {
-                                    pins
-                                }
-                            }
-                            
-                            // Pre-compute icons based on current zoom level
+                        if (hasSearched && clusteredPins.isNotEmpty()) {
                             val currentShowPrice = showPrice
                             
-                            visiblePins.forEach { pin ->
-                                // Use stable key for marker state
-                                val markerState = remember(pin.propertyId, pin.latitude, pin.longitude) { 
-                                    MarkerState(position = LatLng(pin.latitude, pin.longitude))
+                            clusteredPins.forEach { cluster ->
+                                val markerState = remember(cluster.latitude, cluster.longitude, cluster.pins.size) { 
+                                    MarkerState(position = LatLng(cluster.latitude, cluster.longitude))
                                 }
                                 
-                                // Cache descriptors with stable keys
-                                val descriptorKey = if (currentShowPrice) {
-                                    if (pin.insertionType == "RENT") {
-                                        "price_R${pin.price.toInt()}"
-                                    } else {
-                                        "price_S${(pin.price / 1000).toInt()}"
+                                val isCluster = cluster.pins.size > 1
+                                
+                                val icon = if (isCluster) {
+                                    // Show cluster marker
+                                    val clusterBitmap = clusterBitmapCache.getOrPut(cluster.pins.size) {
+                                        createClusterBitmap(cluster.pins.size)
                                     }
+                                    BitmapDescriptorFactory.fromBitmap(clusterBitmap)
                                 } else {
-                                    if (pin.insertionType == "RENT") "dot_rent" else "dot_sale"
-                                }
-                                
-                                val icon = remember(descriptorKey) {
+                                    // Single pin - show price badge
+                                    val pin = cluster.pins.first()
+                                    val descriptorKey = if (currentShowPrice) {
+                                        if (pin.insertionType == "RENT") {
+                                            "price_R${pin.price.toInt()}"
+                                        } else {
+                                            "price_S${(pin.price / 1000).toInt()}"
+                                        }
+                                    } else {
+                                        if (pin.insertionType == "RENT") "dot_rent" else "dot_sale"
+                                    }
+                                    
                                     descriptorCache.getOrPut(descriptorKey) {
                                         if (currentShowPrice) {
                                             val priceKey = if (pin.insertionType == "RENT") {
@@ -366,15 +422,21 @@ fun DrawSearchScreen(
                                 Marker(
                                     state = markerState,
                                     icon = icon,
-                                    flat = true,
+                                    flat = !isCluster, // Clusters not flat for better visibility
                                     onClick = {
                                         propertyClickCounter++
-                                        viewModel.loadPropertyById(pin.propertyId)
+                                        if (isCluster) {
+                                            // Load all properties in cluster
+                                            viewModel.loadPropertiesByIds(cluster.pins.map { it.propertyId })
+                                        } else {
+                                            // Single property
+                                            viewModel.loadPropertyById(cluster.pins.first().propertyId)
+                                        }
                                         coroutineScope.launch {
                                             cameraPositionState.animate(
                                                 CameraUpdateFactory.newLatLngZoom(
-                                                    LatLng(pin.latitude, pin.longitude),
-                                                    16f
+                                                    LatLng(cluster.latitude, cluster.longitude),
+                                                    if (isCluster) min(currentZoom + 2f, 18f) else 16f
                                                 ),
                                                 durationMs = 400
                                             )
@@ -387,15 +449,15 @@ fun DrawSearchScreen(
                     }
 
                     // Optimized overlay with hardware layer for smoother rendering
-                    Canvas(
+                        Canvas(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                    ) {
-                        val centerX = size.width * 0.5f
-                        val centerY = size.height * 0.5f
-                        val radiusPx = radiusInPixels.toPx()
-                        
+                        ) {
+                            val centerX = size.width * 0.5f
+                            val centerY = size.height * 0.5f
+                            val radiusPx = radiusInPixels.toPx()
+                            
                         // Draw dark overlay
                         drawRect(color = Color.Black.copy(alpha = 0.4f))
                         
@@ -408,12 +470,12 @@ fun DrawSearchScreen(
                         )
                         
                         // Draw circle border
-                        drawCircle(
-                            color = Green80.copy(alpha = 0.6f),
-                            radius = radiusPx,
-                            center = Offset(centerX, centerY),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                        )
+                            drawCircle(
+                                color = Green80.copy(alpha = 0.6f),
+                                radius = radiusPx,
+                                center = Offset(centerX, centerY),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                            )
                     }
 
                     if (isLoading) {
@@ -631,43 +693,161 @@ private fun createPriceBadgeBitmap(price: Double, insertionType: String): Bitmap
         "€${(price / 1000).toInt()}k"
     }
     
-    // Optimize paint creation - reuse static paint objects would be better but this is acceptable
+    val isRent = insertionType == "RENT"
+    val bgColor = if (isRent) Color(0xFF3B82F6) else Green80 // Blue for rent, Green for sale
+    
     val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.White.toArgb()
-        textSize = 24f  // Slightly smaller for better performance
+        textSize = 32f
         isFakeBoldText = true
         textAlign = Paint.Align.LEFT
+        setShadowLayer(2f, 0f, 1f, Color(0x40000000).toArgb())
     }
     
     val paintBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color(0xFF1F2937).toArgb()
+        color = bgColor.toArgb()
         style = Paint.Style.FILL
+        setShadowLayer(4f, 0f, 2f, Color(0x60000000).toArgb())
     }
 
-    val padding = 7
-    val corner = 14f
+    val paddingH = 14
+    val paddingV = 10
+    val corner = 20f
+    val arrowHeight = 10
+    val arrowWidth = 16
     val textWidth = paintText.measureText(text)
     val textHeight = paintText.fontMetrics.run { bottom - top }
-    val width = (textWidth + padding * 2).toInt()
-    val height = (textHeight + padding * 2).toInt()
+    val width = (textWidth + paddingH * 2).toInt()
+    val badgeHeight = (textHeight + paddingV * 2).toInt()
+    val height = badgeHeight + arrowHeight
 
-    // Use RGB_565 for better performance if alpha is not strictly needed
     val bmp = createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = AndroidCanvas(bmp)
     
+    // Draw rounded rectangle badge
     canvas.drawRoundRect(
-        android.graphics.RectF(0f, 0f, width.toFloat(), height.toFloat()),
+        android.graphics.RectF(0f, 0f, width.toFloat(), badgeHeight.toFloat()),
         corner,
         corner,
         paintBg
     )
     
+    // Draw arrow/pointer at bottom center
+    val arrowPath = android.graphics.Path().apply {
+        moveTo(width / 2f - arrowWidth / 2f, badgeHeight.toFloat() - 4f)
+        lineTo(width / 2f, height.toFloat())
+        lineTo(width / 2f + arrowWidth / 2f, badgeHeight.toFloat() - 4f)
+        close()
+    }
+    canvas.drawPath(arrowPath, paintBg)
+    
+    // Draw text
     canvas.drawText(
         text,
-        padding.toFloat(),
-        padding - paintText.fontMetrics.top,
+        paddingH.toFloat(),
+        paddingV - paintText.fontMetrics.top,
         paintText
     )
 
     return bmp
+}
+
+private fun createClusterBitmap(count: Int): Bitmap {
+    val text = if (count > 99) "99+" else count.toString()
+    
+    val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.White.toArgb()
+        textSize = 36f
+        isFakeBoldText = true
+        textAlign = Paint.Align.CENTER
+    }
+    
+    val paintBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color(0xFFEF4444).toArgb() // Red for clusters
+        style = Paint.Style.FILL
+        setShadowLayer(4f, 0f, 2f, Color(0x60000000).toArgb())
+    }
+    
+    val paintBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.White.toArgb()
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+    }
+
+    val size = 64
+    val bmp = createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bmp)
+    
+    // Draw circle background
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paintBg)
+    
+    // Draw white border
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paintBorder)
+    
+    // Draw count text
+    canvas.drawText(
+        text,
+        size / 2f,
+        size / 2f - (paintText.fontMetrics.ascent + paintText.fontMetrics.descent) / 2,
+        paintText
+    )
+
+    return bmp
+}
+
+private fun clusterPins(
+    pins: List<it.unina.dietiestates.features.property.domain.NearbyPin>,
+    zoom: Float
+): List<PinCluster> {
+    if (pins.isEmpty()) return emptyList()
+    
+    // Clustering threshold based on zoom level
+    // At lower zoom, cluster more aggressively
+    val thresholdDegrees = when {
+        zoom < 10f -> 0.1
+        zoom < 12f -> 0.05
+        zoom < 14f -> 0.02
+        zoom < 16f -> 0.008
+        else -> 0.003 // Very zoomed in, minimal clustering
+    }
+    
+    val clusters = mutableListOf<PinCluster>()
+    val assignedPins = mutableSetOf<Int>()
+    
+    for (pin in pins) {
+        if (pin.propertyId in assignedPins) continue
+        
+        // Find all pins within threshold distance
+        val nearbyPins = pins.filter { other ->
+            other.propertyId !in assignedPins &&
+            abs(pin.latitude - other.latitude) < thresholdDegrees &&
+            abs(pin.longitude - other.longitude) < thresholdDegrees
+        }
+        
+        // Mark as assigned
+        nearbyPins.forEach { assignedPins.add(it.propertyId) }
+        
+        // Calculate cluster center (average position)
+        val centerLat = nearbyPins.map { it.latitude }.average()
+        val centerLng = nearbyPins.map { it.longitude }.average()
+        val avgPrice = nearbyPins.map { it.price }.average()
+        
+        // Determine most common insertion type
+        val insertionType = nearbyPins
+            .groupingBy { it.insertionType }
+            .eachCount()
+            .maxByOrNull { it.value }?.key ?: "SALE"
+        
+        clusters.add(
+            PinCluster(
+                latitude = centerLat,
+                longitude = centerLng,
+                pins = nearbyPins,
+                averagePrice = avgPrice,
+                insertionType = insertionType
+            )
+        )
+    }
+    
+    return clusters
 }

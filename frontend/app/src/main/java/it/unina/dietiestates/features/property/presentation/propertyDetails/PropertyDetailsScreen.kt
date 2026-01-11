@@ -236,20 +236,22 @@ fun PropertyDetailsScreen(
                                 }
 
                                 // Condition badge
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            Color.White.copy(alpha = 0.9f),
-                                            shape = RoundedCornerShape(8.dp)
+                                property.propertyCondition?.let { condition ->
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                Color.White.copy(alpha = 0.9f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = condition.name.replace('_', ' '),
+                                            color = Color.Black,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = property.propertyCondition.name.replace('_', ' '),
-                                        color = Color.Black,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    }
                                 }
                             }
 
@@ -459,12 +461,14 @@ fun PropertyDetailsScreen(
                                 text = property.propertyType.name.replace('_', ' ')
                                     .lowercase().replaceFirstChar { it.uppercase() }
                             )
-                            FeatureChip(
-                                icon = Icons.Outlined.OtherHouses,
-                                text = property.propertyCondition.name.replace('_', ' ')
-                                    .lowercase().replaceFirstChar { it.uppercase() }
-                            )
-                            if (property.furnished) {
+                            property.propertyCondition?.let { condition ->
+                                FeatureChip(
+                                    icon = Icons.Outlined.OtherHouses,
+                                    text = condition.name.replace('_', ' ')
+                                        .lowercase().replaceFirstChar { it.uppercase() }
+                                )
+                            }
+                            if (property.furnished == true) {
                                 FeatureChip(
                                     icon = Icons.Outlined.Kitchen,
                                     text = "Furnished"

@@ -5,10 +5,14 @@ import { SearchPropertyDto } from './dto/search-property.dto';
 import { Prisma, PropertyImage } from '@prisma/client';
 import { NearbyPropertyDto } from './dto/nearby-property.dto';
 import { S3Service } from 'src/s3/s3.service';
+import { NewPropertyNotificationService } from '../notification-preferences/new-property-notification.service';
 
 @Injectable()
 export class PropertyService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly newPropertyNotificationService: NewPropertyNotificationService,
+  ) { }
 
 
   async createPropertyWithImages(
@@ -19,7 +23,7 @@ export class PropertyService {
   ) {
     const agentOrAdmin = await this.validateAgentAndAgency(agentUserId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const property = await tx.property.create({
         data: {
           ...dto,
@@ -34,6 +38,10 @@ export class PropertyService {
 
       return this.getPropertyWithDetails(tx, property.propertyId);
     });
+
+    this.newPropertyNotificationService.notifyUsersForNewProperty(result).catch(() => {});
+
+    return result;
   }
 
   private async validateAgentAndAgency(agentUserId: number) {

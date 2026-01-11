@@ -179,6 +179,9 @@ private fun NavGraphBuilder.userScreens(
                 onDrawSearchNavigation = {
                     navController.navigate(Route.DrawSearch())
                 },
+                onSearchPropertyNavigation = {
+                    navController.navigate(Route.Search)
+                },
                 onSearchNearYouNavigation = {
                     navController.navigate(Route.DrawSearch(centerOnCurrentLocation = true))
                 },

@@ -14,7 +14,7 @@ data class Property(
     val energyClass: String,
     val concierge: Boolean,
     val airConditioning: Boolean,
-    val furnished: Boolean,//
+    val furnished: Boolean?,//
     val propertyType: PropertyType,
     val insertionType: InsertionType,
     val address: String,
@@ -26,7 +26,7 @@ data class Property(
     val longitude: Double,
     val images: List<String>,
     val agentId: Int,
-    val propertyCondition: PropertyCondition,//
+    val propertyCondition: PropertyCondition?,//
     val createdAt: String,
     val agency: Agency
 )

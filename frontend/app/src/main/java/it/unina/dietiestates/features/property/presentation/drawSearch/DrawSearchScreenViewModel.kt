@@ -66,10 +66,16 @@ class DrawSearchScreenViewModel(
             propertyRepository.getPropertyById(propertyId).collect { result ->
                 when (result) {
                     is Result.Success -> _state.update { 
-                        it.copy(selectedProperty = result.data) 
+                        it.copy(
+                            selectedProperty = result.data,
+                            selectedProperties = listOf(result.data)
+                        ) 
                     }
                     is Result.Error -> _state.update { 
-                        it.copy(selectedProperty = null) 
+                        it.copy(
+                            selectedProperty = null,
+                            selectedProperties = emptyList()
+                        ) 
                     }
                     is Result.IsLoading -> _state.update { 
                         it.copy(isLoadingProperty = result.isLoading) 
@@ -79,7 +85,37 @@ class DrawSearchScreenViewModel(
         }
     }
 
+    fun loadPropertiesByIds(propertyIds: List<Int>) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingProperty = true) }
+            val properties = mutableListOf<it.unina.dietiestates.features.property.domain.Property>()
+            
+            for (id in propertyIds) {
+                propertyRepository.getPropertyById(id).collect { result ->
+                    when (result) {
+                        is Result.Success -> properties.add(result.data)
+                        is Result.Error -> { /* skip failed loads */ }
+                        is Result.IsLoading -> { /* no-op */ }
+                    }
+                }
+            }
+            
+            _state.update { 
+                it.copy(
+                    selectedProperties = properties,
+                    selectedProperty = properties.firstOrNull(),
+                    isLoadingProperty = false
+                ) 
+            }
+        }
+    }
+
     fun clearSelectedProperty() {
-        _state.update { it.copy(selectedProperty = null) }
+        _state.update { 
+            it.copy(
+                selectedProperty = null,
+                selectedProperties = emptyList()
+            ) 
+        }
     }
 }

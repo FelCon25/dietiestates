@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, UseGuards, Body } from '@nestjs/common';
 import { NotificationPreferencesService } from './notification-preferences.service';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 import { Request } from 'express';
-import { Body } from '@nestjs/common';
 import { UpdateNotificationPreferenceDto } from './dto/update-notification-preference.dto';
+import { SendPromotionalNotificationDto } from './dto/send-promotional-notification.dto';
 import { NotificationCategory } from '@prisma/client';
 
 @Controller('notification-preferences')
@@ -32,10 +33,9 @@ export class NotificationPreferencesController {
     }
 
 
-    @UseGuards(AccessTokenGuard)
+    @UseGuards(ApiKeyGuard)
     @Post('send-promotional')
-    async sendPromotionalNotification(@Req() req: Request) {
-        const user = req.user as { userId: number };
-        return this.notificationPreferencesService.sendPromotionalNotification();
+    async sendPromotionalNotification(@Body() dto: SendPromotionalNotificationDto) {
+        return this.notificationPreferencesService.sendPromotionalNotification(dto.title, dto.body);
     }
 }

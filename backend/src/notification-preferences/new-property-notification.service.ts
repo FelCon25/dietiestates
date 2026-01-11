@@ -1,10 +1,28 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationCategory, Property, SavedSearch } from '@prisma/client';
 import * as admin from 'firebase-admin';
 
-// Throttle notifications: max 1 notification per saved search every 6 hours
 const NOTIFICATION_THROTTLE_HOURS = 0;
+
+const EARTH_RADIUS_KM = 6371;
+const MIN_LATITUDE = -90;
+const MAX_LATITUDE = 90;
+const MIN_LONGITUDE = -180;
+const MAX_LONGITUDE = 180;
+
+
+export interface GeoPoint {
+  latitude: number;
+  longitude: number;
+}
+
+
+export interface DistanceResult {
+  distanceKm: number;
+  from: GeoPoint;
+  to: GeoPoint;
+}
 
 interface PropertyWithDetails extends Property {
   images?: { url: string }[];
@@ -42,18 +60,10 @@ export class NewPropertyNotificationService {
     }
   }
 
-  /**
-   * Find saved searches that match the given property.
-   * Applies throttling to avoid spam.
-   */
   private async findMatchingSavedSearches(property: PropertyWithDetails) {
     const throttleDate = new Date();
     throttleDate.setHours(throttleDate.getHours() - NOTIFICATION_THROTTLE_HOURS);
 
-    // Find saved searches where:
-    // 1. User has NEW_PROPERTY_MATCH notification enabled
-    // 2. Search hasn't been notified in the last NOTIFICATION_THROTTLE_HOURS
-    // 3. Search criteria match the property
     const savedSearches = await this.prisma.savedSearch.findMany({
       where: {
         user: {
@@ -83,13 +93,10 @@ export class NewPropertyNotificationService {
       },
     });
 
-    // Filter searches that actually match the property
     return savedSearches.filter((search) => this.doesPropertyMatchSearch(property, search));
   }
 
-  /**
-   * Check if a property matches a saved search criteria.
-   */
+
   private doesPropertyMatchSearch(property: PropertyWithDetails, search: SavedSearch): boolean {
     // Price filters
     if (search.minPrice !== null && Number(property.price) < Number(search.minPrice)) {
@@ -162,14 +169,22 @@ export class NewPropertyNotificationService {
 
     // Geo-location filter (if search has lat/lng and radius)
     if (search.latitude !== null && search.longitude !== null && search.radius !== null) {
-      const distance = this.calculateDistanceKm(
-        Number(search.latitude),
-        Number(search.longitude),
-        Number(property.latitude),
-        Number(property.longitude),
-      );
-      // radius is in meters, convert to km
-      if (distance > search.radius / 1000) {
+      try {
+        const searchCenter: GeoPoint = {
+          latitude: Number(search.latitude),
+          longitude: Number(search.longitude)
+        };
+        const propertyLocation: GeoPoint = {
+          latitude: Number(property.latitude),
+          longitude: Number(property.longitude)
+        };
+        const radiusKm = search.radius / 1000;
+        
+        if (!this.isPointWithinRadius(searchCenter, propertyLocation, radiusKm)) {
+          return false;
+        }
+      } catch (error) {
+        this.logger.warn(`Invalid coordinates for geo-filter: ${error.message}`);
         return false;
       }
     }
@@ -177,27 +192,119 @@ export class NewPropertyNotificationService {
     return true;
   }
 
-  /**
-   * Calculate distance between two points using Haversine formula.
-   */
-  private calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Earth's radius in km
+
+
+  calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    this.validateCoordinate(lat1, 'lat1', MIN_LATITUDE, MAX_LATITUDE);
+    this.validateCoordinate(lon1, 'lon1', MIN_LONGITUDE, MAX_LONGITUDE);
+    this.validateCoordinate(lat2, 'lat2', MIN_LATITUDE, MAX_LATITUDE);
+    this.validateCoordinate(lon2, 'lon2', MIN_LONGITUDE, MAX_LONGITUDE);
+
+    if (lat1 === lat2 && lon1 === lon2) {
+      return 0;
+    }
+
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const a = this.calculateHaversineA(lat1, lat2, dLat, dLon);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    
+    return EARTH_RADIUS_KM * c;
   }
+
+
+  calculateDistanceBetweenPoints(from: GeoPoint, to: GeoPoint): DistanceResult {
+    this.validateGeoPoint(from, 'from');
+    this.validateGeoPoint(to, 'to');
+
+    const distanceKm = this.calculateDistanceKm(
+      from.latitude,
+      from.longitude,
+      to.latitude,
+      to.longitude
+    );
+
+    return {
+      distanceKm,
+      from,
+      to
+    };
+  }
+
+
+  isPointWithinRadius(center: GeoPoint, point: GeoPoint, radiusKm: number): boolean {
+    this.validateRadius(radiusKm);
+    
+    const distance = this.calculateDistanceBetweenPoints(center, point);
+    return distance.distanceKm <= radiusKm;
+  }
+
+
+  private validateCoordinate(value: number, paramName: string, min: number, max: number): void {
+    if (value === null || value === undefined) {
+      throw new BadRequestException(`${paramName} is required`);
+    }
+    
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      throw new BadRequestException(`${paramName} must be a valid number`);
+    }
+    
+    if (!Number.isFinite(value)) {
+      throw new BadRequestException(`${paramName} must be a finite number`);
+    }
+    
+    if (value < min || value > max) {
+      throw new BadRequestException(
+        `${paramName} must be between ${min} and ${max}, received: ${value}`
+      );
+    }
+  }
+
+
+  private validateGeoPoint(point: GeoPoint, paramName: string): void {
+    if (!point) {
+      throw new BadRequestException(`${paramName} is required`);
+    }
+    
+    this.validateCoordinate(point.latitude, `${paramName}.latitude`, MIN_LATITUDE, MAX_LATITUDE);
+    this.validateCoordinate(point.longitude, `${paramName}.longitude`, MIN_LONGITUDE, MAX_LONGITUDE);
+  }
+
+  private validateRadius(radiusKm: number): void {
+    if (radiusKm === null || radiusKm === undefined) {
+      throw new BadRequestException('radiusKm is required');
+    }
+    
+    if (typeof radiusKm !== 'number' || Number.isNaN(radiusKm)) {
+      throw new BadRequestException('radiusKm must be a valid number');
+    }
+    
+    if (radiusKm < 0) {
+      throw new BadRequestException('radiusKm must be non-negative');
+    }
+    
+    const maxRadius = Math.PI * EARTH_RADIUS_KM;
+    if (radiusKm > maxRadius) {
+      throw new BadRequestException(`radiusKm must not exceed ${maxRadius.toFixed(2)} km`);
+    }
+  }
+
+
+  private calculateHaversineA(lat1: number, lat2: number, dLat: number, dLon: number): number {
+    return (
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    );
+  }
+
 
   private toRad(deg: number): number {
     return deg * (Math.PI / 180);
   }
 
-  /**
-   * Group saved searches by user ID to avoid sending multiple notifications.
-   */
+
   private groupSearchesByUser(
     searches: { searchId: number; userId: number; user: { userId: number; sessions: { notificationToken: string | null }[] } }[],
   ): Map<number, { tokens: string[]; searchIds: number[] }> {

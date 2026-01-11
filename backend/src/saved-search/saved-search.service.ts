@@ -29,11 +29,11 @@ export class SavedSearchService {
     });
 
     if (!savedSearch) {
-      throw new NotFoundException('Ricerca salvata non trovata');
+      throw new NotFoundException('Saved search not found');
     }
 
     if (savedSearch.userId !== userId) {
-      throw new ForbiddenException('Non hai accesso a questa ricerca salvata');
+      throw new ForbiddenException('You do not have access to this saved search');
     }
 
     return savedSearch;

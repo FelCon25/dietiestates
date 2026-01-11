@@ -16,8 +16,6 @@ import { log } from 'console';
 @Injectable()
 export class AuthService {
 
-    
-
     constructor(private prisma: PrismaService, private jwtService: JwtService) {}
 
     async login(dto: LoginDto, userAgent: string) {
@@ -245,6 +243,10 @@ export class AuthService {
             select: { sessionId: true, userId: true, expiresAt: true }
         });
 
+        return this.validateAndRefreshSession(dbSession);
+    }
+
+    async validateAndRefreshSession(dbSession: { sessionId: number; userId: number; expiresAt: Date } | null): Promise<{ accessToken: string; refreshToken: string | null }> {
         if (!dbSession) {
             throw new UnauthorizedException('Session not found');
         }
@@ -253,6 +255,10 @@ export class AuthService {
             throw new UnauthorizedException('Session expired');
         }
 
+        return this.processSessionRefresh(dbSession);
+    }
+
+    private async processSessionRefresh(dbSession: { sessionId: number; userId: number; expiresAt: Date }): Promise<{ accessToken: string; refreshToken: string | null }> {
         const user = await this.prisma.user.findUnique({
             where: { userId: dbSession.userId },
             select: { role: true }
@@ -264,9 +270,9 @@ export class AuthService {
 
         let refreshToken: string | null = null;
         
-        // If session is expiring in less than 7 days, extend it
-        if(dbSession.expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000) {
-            const newExpiry = new Date(Date.now() + 2592000000); // 30 days from now
+        const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+        if (dbSession.expiresAt.getTime() - Date.now() < sevenDaysInMs) {
+            const newExpiry = new Date(Date.now() + 2592000000);
             await this.prisma.session.update({
                 where: { sessionId: dbSession.sessionId },
                 data: { expiresAt: newExpiry }

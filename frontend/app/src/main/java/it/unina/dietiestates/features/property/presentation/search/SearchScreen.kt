@@ -186,7 +186,7 @@ fun SearchScreen(
                         LazyColumn(modifier = Modifier.padding(vertical = 8.dp)) {
                             items(
                                 items = state.addressSuggestions,
-                                key = { it.formatted }
+                                key = { "${it.formatted}_${it.latitude}_${it.longitude}" }
                             ) { address ->
                                 Row(
                                     modifier = Modifier

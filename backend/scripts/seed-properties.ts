@@ -1,598 +1,370 @@
-import { PrismaClient, PropertyType, InsertionType, PropertyCondition, Role } from '@prisma/client';
-import axios from 'axios';
+import { PrismaClient, InsertionType, PropertyType, PropertyCondition, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-// Load .env from the backend directory
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const prisma = new PrismaClient();
 
-// Google Maps API Configuration
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const GEOCODING_API_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
-
-// Delay between API calls to avoid rate limiting (in milliseconds)
-const API_DELAY = 150;
-
-// Configuration
-const TARGET_PROPERTIES = 1200;
-const ROME_PROPERTIES = 50;
-
-// Italian cities with coordinates
-const ITALIAN_CITIES = [
-  { name: 'Rome', nameLat: 'Roma', province: 'Rome', provinceLat: 'Roma', lat: 41.9028, lng: 12.4964, weight: ROME_PROPERTIES },
-  { name: 'Milan', nameLat: 'Milano', province: 'Milan', provinceLat: 'Milano', lat: 45.4642, lng: 9.1900, weight: 150 },
-  { name: 'Naples', nameLat: 'Napoli', province: 'Naples', provinceLat: 'Napoli', lat: 40.8518, lng: 14.2681, weight: 120 },
-  { name: 'Turin', nameLat: 'Torino', province: 'Turin', provinceLat: 'Torino', lat: 45.0703, lng: 7.6869, weight: 100 },
-  { name: 'Florence', nameLat: 'Firenze', province: 'Florence', provinceLat: 'Firenze', lat: 43.7696, lng: 11.2558, weight: 100 },
-  { name: 'Bologna', nameLat: 'Bologna', province: 'Bologna', provinceLat: 'Bologna', lat: 44.4949, lng: 11.3426, weight: 100 },
-  { name: 'Venice', nameLat: 'Venezia', province: 'Venice', provinceLat: 'Venezia', lat: 45.4408, lng: 12.3155, weight: 80 },
-  { name: 'Palermo', nameLat: 'Palermo', province: 'Palermo', provinceLat: 'Palermo', lat: 38.1157, lng: 13.3615, weight: 100 },
-  { name: 'Genoa', nameLat: 'Genova', province: 'Genoa', provinceLat: 'Genova', lat: 44.4056, lng: 8.9463, weight: 80 },
-  { name: 'Bari', nameLat: 'Bari', province: 'Bari', provinceLat: 'Bari', lat: 41.1171, lng: 16.8719, weight: 80 },
-  { name: 'Catania', nameLat: 'Catania', province: 'Catania', provinceLat: 'Catania', lat: 37.5079, lng: 15.0830, weight: 80 },
-  { name: 'Verona', nameLat: 'Verona', province: 'Verona', provinceLat: 'Verona', lat: 45.4384, lng: 10.9916, weight: 70 },
-  { name: 'Padua', nameLat: 'Padova', province: 'Padua', provinceLat: 'Padova', lat: 45.4064, lng: 11.8768, weight: 60 },
-  { name: 'Trieste', nameLat: 'Trieste', province: 'Trieste', provinceLat: 'Trieste', lat: 45.6495, lng: 13.7768, weight: 50 },
+const italianCities = [
+  { city: 'Rome', province: 'RM', postalCode: '00100', lat: 41.9028, lng: 12.4964 },
+  { city: 'Milan', province: 'MI', postalCode: '20100', lat: 45.4642, lng: 9.1900 },
+  { city: 'Naples', province: 'NA', postalCode: '80100', lat: 40.8518, lng: 14.2681 },
+  { city: 'Turin', province: 'TO', postalCode: '10100', lat: 45.0703, lng: 7.6869 },
+  { city: 'Palermo', province: 'PA', postalCode: '90100', lat: 38.1157, lng: 13.3615 },
+  { city: 'Genoa', province: 'GE', postalCode: '16100', lat: 44.4056, lng: 8.9463 },
+  { city: 'Bologna', province: 'BO', postalCode: '40100', lat: 44.4949, lng: 11.3426 },
+  { city: 'Florence', province: 'FI', postalCode: '50100', lat: 43.7696, lng: 11.2558 },
+  { city: 'Bari', province: 'BA', postalCode: '70100', lat: 41.1171, lng: 16.8719 },
+  { city: 'Catania', province: 'CT', postalCode: '95100', lat: 37.5079, lng: 15.0830 },
+  { city: 'Venice', province: 'VE', postalCode: '30100', lat: 45.4408, lng: 12.3155 },
+  { city: 'Verona', province: 'VR', postalCode: '37100', lat: 45.4384, lng: 10.9916 },
+  { city: 'Messina', province: 'ME', postalCode: '98100', lat: 38.1938, lng: 15.5540 },
+  { city: 'Padua', province: 'PD', postalCode: '35100', lat: 45.4064, lng: 11.8768 },
+  { city: 'Trieste', province: 'TS', postalCode: '34100', lat: 45.6495, lng: 13.7768 },
+  { city: 'Brescia', province: 'BS', postalCode: '25100', lat: 45.5416, lng: 10.2118 },
+  { city: 'Parma', province: 'PR', postalCode: '43100', lat: 44.8015, lng: 10.3279 },
+  { city: 'Taranto', province: 'TA', postalCode: '74100', lat: 40.4644, lng: 17.2470 },
+  { city: 'Modena', province: 'MO', postalCode: '41100', lat: 44.6471, lng: 10.9252 },
+  { city: 'Reggio Calabria', province: 'RC', postalCode: '89100', lat: 38.1147, lng: 15.6501 },
+  { city: 'Reggio Emilia', province: 'RE', postalCode: '42100', lat: 44.6989, lng: 10.6297 },
+  { city: 'Perugia', province: 'PG', postalCode: '06100', lat: 43.1107, lng: 12.3908 },
+  { city: 'Ravenna', province: 'RA', postalCode: '48100', lat: 44.4184, lng: 12.2035 },
+  { city: 'Livorno', province: 'LI', postalCode: '57100', lat: 43.5485, lng: 10.3106 },
+  { city: 'Cagliari', province: 'CA', postalCode: '09100', lat: 39.2238, lng: 9.1217 },
+  { city: 'Foggia', province: 'FG', postalCode: '71100', lat: 41.4621, lng: 15.5444 },
+  { city: 'Rimini', province: 'RN', postalCode: '47900', lat: 44.0678, lng: 12.5695 },
+  { city: 'Salerno', province: 'SA', postalCode: '84100', lat: 40.6824, lng: 14.7681 },
+  { city: 'Ferrara', province: 'FE', postalCode: '44100', lat: 44.8381, lng: 11.6198 },
+  { city: 'Sassari', province: 'SS', postalCode: '07100', lat: 40.7259, lng: 8.5556 },
 ];
 
-// Common Italian street names
-const STREET_NAMES = [
-  'Via Roma', 'Via Milano', 'Via Torino', 'Via Napoli', 'Via Venezia',
-  'Via Dante', 'Via Manzoni', 'Via Garibaldi', 'Via Cavour', 'Via Verdi',
-  'Corso Italia', 'Corso Vittorio Emanuele', 'Corso Garibaldi',
-  'Piazza della Repubblica', 'Piazza San Marco', 'Piazza Duomo',
-  'Via dei Mille', 'Via XX Settembre', 'Via IV Novembre', 'Via Nazionale',
-  'Viale Europa', 'Viale della Libertà', 'Via Kennedy', 'Via Churchill',
+const streetNames = [
+  'Via Roma', 'Via Garibaldi', 'Via Mazzini', 'Via Dante', 'Via Verdi',
+  'Via Cavour', 'Via Marconi', 'Via Kennedy', 'Corso Italia', 'Corso Vittorio Emanuele',
+  'Via della Repubblica', 'Via XX Settembre', 'Via Nazionale', 'Via Europa', 'Via Milano',
+  'Via Firenze', 'Via Napoli', 'Via Venezia', 'Via Torino', 'Via Bologna',
+  'Piazza del Duomo', 'Piazza della Libertà', 'Via San Giovanni', 'Via dei Mille', 'Via Leopardi',
+  'Via Petrarca', 'Via Pascoli', 'Via Carducci', 'Via Foscolo', 'Via Alfieri',
+  'Viale della Vittoria', 'Viale dei Giardini', 'Via delle Rose', 'Via dei Tigli', 'Via degli Ulivi',
+  'Via del Mare', 'Via della Montagna', 'Via del Sole', 'Via della Luna', 'Via delle Stelle',
 ];
 
-// Agency names (in English)
-const AGENCY_NAMES = [
-  'Luxury Homes Agency',
-  'City Real Estate',
-  'Prime Properties Italia',
-  'Elite Estates',
-  'Dream Home Realty',
-  'Metropolitan Properties',
-  'Golden Key Real Estate',
-  'Prestige Homes',
-  'Capital Real Estate',
-  'Urban Living Properties',
+const agencyNames = [
+  'Immobiliare Italiana', 'Casa Dolce Casa', 'Elite Properties', 'Panorama Real Estate', 'Mediterraneo Immobili',
+  'Roma Properties', 'Milano Case', 'Napoli Home', 'Firenze Estates', 'Venezia Living',
+  'Toscana Properties', 'Lombardia Immobili', 'Sicilia Real Estate', 'Sardegna Case', 'Piemonte Properties',
+  'Adriatico Immobili', 'Tirreno Real Estate', 'Alpi Properties', 'Laguna Living', 'Centro Italia Case',
 ];
 
-// First and last names for agents (in English)
-const FIRST_NAMES = [
-  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
-  'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica',
-  'Thomas', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven',
-  'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley',
+const descriptions = [
+  'Beautiful property in a prestigious area with stunning views and modern amenities. Recently renovated with high-quality materials.',
+  'Spacious residence featuring elegant interiors and a well-maintained garden. Perfect for families seeking comfort and style.',
+  'Charming home located in a quiet neighborhood with excellent transport links. Natural light floods every room.',
+  'Modern property with contemporary design and energy-efficient features. Close to shops, restaurants, and cultural attractions.',
+  'Exclusive residence offering privacy and luxury in one of the most sought-after locations. Premium finishes throughout.',
+  'Bright and airy living spaces with panoramic views of the surrounding landscape. Ideal for those who appreciate natural beauty.',
+  'Well-appointed property featuring spacious rooms and quality fixtures. Walking distance to schools and parks.',
+  'Elegant home with classic Italian architecture and modern conveniences. A perfect blend of tradition and innovation.',
+  'Comfortable residence in a family-friendly area with ample parking. Recently updated kitchen and bathrooms.',
+  'Stunning property with attention to detail in every corner. Features include marble floors and designer lighting.',
+  'Unique home offering character and charm in a historic setting. High ceilings and original architectural details preserved.',
+  'Contemporary living space with open-plan design and smart home technology. Perfect for modern lifestyles.',
+  'Peaceful retreat surrounded by nature yet close to urban amenities. Large terrace perfect for outdoor entertaining.',
+  'Sophisticated property with premium materials and craftsmanship. Gourmet kitchen and spa-like bathrooms.',
+  'Versatile home suitable for various needs with flexible floor plan. Excellent investment opportunity.',
+  'Luxurious residence featuring top-tier appliances and custom cabinetry. Private garage and storage included.',
+  'Inviting property with warm ambiance and functional layout. Move-in ready with all systems updated.',
+  'Distinguished home in an established community with mature landscaping. Prestigious address and excellent schools.',
+  'Light-filled spaces with floor-to-ceiling windows and balconies. Stunning sunset views included.',
+  'Meticulously maintained property ready for immediate occupancy. New roof, HVAC, and electrical systems.',
 ];
 
-const LAST_NAMES = [
-  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
-  'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor',
-  'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White', 'Harris', 'Clark',
+const propertyImages = [
+  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+  'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800',
+  'https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800',
+  'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
+  'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=800',
+  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800',
+  'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+  'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=800',
+  'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+  'https://images.unsplash.com/photo-1598228723793-52759bba239c?w=800',
+  'https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=800',
+  'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
+  'https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?w=800',
+  'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800',
+  'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800',
+  'https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?w=800',
+  'https://images.unsplash.com/photo-1600585153490-76fb20a32601?w=800',
+  'https://images.unsplash.com/photo-1600573472591-ee6981cf81f4?w=800',
+  'https://images.unsplash.com/photo-1605146769289-440113cc3d00?w=800',
+  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+  'https://images.unsplash.com/photo-1600047509358-9dc75507daeb?w=800',
+  'https://images.unsplash.com/photo-1600566752734-2a0cd66c42dc?w=800',
+  'https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800',
+  'https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?w=800',
+  'https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=800',
+  'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=800',
+  'https://images.unsplash.com/photo-1600047509782-20d39509f26d?w=800',
+  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
+  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
+  'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800',
+  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800',
+  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+  'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800',
+  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
+  'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
+  'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800',
+  'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800',
+  'https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800',
+  'https://images.unsplash.com/photo-1560184897-ae75f418493e?w=800',
+  'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=800',
+  'https://images.unsplash.com/photo-1560449752-3fd4bdbe7df0?w=800',
+  'https://images.unsplash.com/photo-1560448075-bb485b067938?w=800',
+  'https://images.unsplash.com/photo-1560448205-17d3a46c84de?w=800',
+  'https://images.unsplash.com/photo-1560185008-b033106af5c3?w=800',
+  'https://images.unsplash.com/photo-1560184990-4a5f77067f41?w=800',
+  'https://images.unsplash.com/photo-1560185128-cd5e323e622b?w=800',
+  'https://images.unsplash.com/photo-1560185009-dddeb820c7b7?w=800',
 ];
 
-interface GeocodeResult {
-  address: string;
-  city: string;
-  province: string;
-  postalCode: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  route: string;
-  streetNumber: string;
+const interiorImages = [
+  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800',
+  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800',
+  'https://images.unsplash.com/photo-1616137466211-f939a420be84?w=800',
+  'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800',
+  'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=800',
+  'https://images.unsplash.com/photo-1617104678098-de229db51175?w=800',
+  'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800',
+  'https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800',
+  'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?w=800',
+  'https://images.unsplash.com/photo-1615876234886-fd9a39fda97f?w=800',
+  'https://images.unsplash.com/photo-1616593969747-4797dc75033e?w=800',
+  'https://images.unsplash.com/photo-1617103996702-96ff29b1c467?w=800',
+  'https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800',
+  'https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=800',
+  'https://images.unsplash.com/photo-1617806125688-49b0e5b15e3d?w=800',
+  'https://images.unsplash.com/photo-1617325710236-4a36d46427c2?w=800',
+  'https://images.unsplash.com/photo-1618219740975-d40978bb7378?w=800',
+  'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800',
+  'https://images.unsplash.com/photo-1616486029423-aaa4789e8c9a?w=800',
+  'https://images.unsplash.com/photo-1617098900591-3f90928e8c54?w=800',
+];
+
+function randomElement<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Delay function
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Geocode an address using Google Maps API
-async function geocodeAddress(address: string, retries = 3): Promise<GeocodeResult | null> {
-  try {
-    const response = await axios.get(GEOCODING_API_URL, {
-      params: {
-        address: address,
-        key: GOOGLE_MAPS_API_KEY,
-        language: 'en',
+function randomCoordinateOffset(): number {
+  return (Math.random() - 0.5) * 0.1;
+}
+
+function generatePrice(insertionType: InsertionType, propertyType: PropertyType, surfaceArea: number): number {
+  let basePrice: number;
+  if (insertionType === InsertionType.RENT) {
+    basePrice = surfaceArea * randomInt(8, 25);
+  } else {
+    basePrice = surfaceArea * randomInt(1500, 5000);
+  }
+  if (propertyType === PropertyType.VILLA) basePrice *= 1.5;
+  if (propertyType === PropertyType.STUDIO) basePrice *= 0.8;
+  if (propertyType === PropertyType.GARAGE) basePrice *= 0.3;
+  return Math.round(basePrice);
+}
+
+async function main() {
+  console.log('Starting seed...');
+  
+  const hashedPassword = await bcrypt.hash('Password123!', 10);
+  
+  const agencies: { agencyId: number; agents: number[] }[] = [];
+  
+  for (let i = 0; i < agencyNames.length; i++) {
+    const cityData = italianCities[i % italianCities.length];
+    const streetNumber = randomInt(1, 200);
+    
+    const adminUser = await prisma.user.create({
+      data: {
+        email: `admin${i + 1}@agency.com`,
+        password: hashedPassword,
+        firstName: `Admin`,
+        lastName: `Agency${i + 1}`,
+        phone: `+39 0${randomInt(10, 99)} ${randomInt(1000000, 9999999)}`,
+        role: Role.ADMIN_AGENCY,
       },
     });
-
-    if (response.data.status === 'OK' && response.data.results.length > 0) {
-      const result = response.data.results[0];
-      const components = result.address_components;
-
-      // Extract address components like in frontend AddressMappers.kt
-      const getComponent = (type: string) => {
-        const comp = components.find((c: any) => c.types.includes(type));
-        return comp ? comp.long_name : '';
-      };
-
-      const route = getComponent('route');
-      const streetNumber = getComponent('street_number');
-      
-      // City extraction (locality or administrative_area_level_3)
-      const city = getComponent('locality') || getComponent('administrative_area_level_3');
-      
-      // Province extraction and cleaning (like in AddressMappers.kt)
-      let provinceLong = getComponent('administrative_area_level_2');
-      const provinceClean = provinceLong
-        .replace('Province of ', '')
-        .replace('Provincia di ', '')
-        .replace('Metropolitan City of ', '')
-        .replace('Città metropolitana di ', '');
-
-      const postalCode = getComponent('postal_code');
-
-      return {
-        address: `${route} ${streetNumber}`.trim(),
-        city: city,
-        province: provinceClean,
-        postalCode: postalCode || '00100',
+    
+    const agencyAdmin = await prisma.agencyAdmin.create({
+      data: {
+        userId: adminUser.userId,
+      },
+    });
+    
+    const agency = await prisma.agency.create({
+      data: {
+        businessName: agencyNames[i],
+        legalName: `${agencyNames[i]} S.r.l.`,
+        vatNumber: `IT${randomInt(10000000000, 99999999999)}`,
+        email: `info@${agencyNames[i].toLowerCase().replace(/\s/g, '')}.it`,
+        pec: `${agencyNames[i].toLowerCase().replace(/\s/g, '')}@pec.it`,
+        phone: `+39 0${randomInt(10, 99)} ${randomInt(1000000, 9999999)}`,
+        website: `https://www.${agencyNames[i].toLowerCase().replace(/\s/g, '')}.it`,
+        address: `${randomElement(streetNames)}, ${streetNumber}`,
+        city: cityData.city,
+        postalCode: cityData.postalCode,
+        province: cityData.province,
         country: 'Italy',
-        latitude: result.geometry.location.lat,
-        longitude: result.geometry.location.lng,
-        route: route,
-        streetNumber: streetNumber,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`Geocoding failed, retrying... (${retries} retries left)`);
-      await delay(1000);
-      return geocodeAddress(address, retries - 1);
-    }
-    console.error('Geocoding error:', error.message);
-    return null;
-  }
-}
-
-// Generate a random street address
-function generateStreetAddress(city: string): string {
-  const street = STREET_NAMES[Math.floor(Math.random() * STREET_NAMES.length)];
-  const number = Math.floor(Math.random() * 300) + 1;
-  return `${street} ${number}, ${city}, Italy`;
-}
-
-// Generate property description based on type
-function generatePropertyDescription(propertyType: PropertyType, insertionType: InsertionType): string {
-  const descriptions: Record<PropertyType, Record<InsertionType, string[]>> = {
-    APARTMENT: {
-      SALE: [
-        'Spacious apartment with modern amenities in a prime location. Features include hardwood floors, updated kitchen, and plenty of natural light.',
-        'Beautiful apartment offering comfort and style. Recently renovated with high-quality finishes and excellent layout.',
-        'Stunning apartment in the heart of the city. Perfect for families or professionals seeking a comfortable urban living space.',
-        'Elegant apartment with contemporary design. Includes balcony, storage space, and access to building amenities.',
-      ],
-      RENT: [
-        'Comfortable apartment available for rent. Ideal location with easy access to public transportation and local amenities.',
-        'Well-maintained apartment perfect for professionals or small families. Bright rooms and functional layout.',
-        'Charming apartment in a quiet neighborhood. Features include modern appliances and convenient access to shops.',
-        'Lovely apartment with great natural light. Located in a vibrant area with restaurants and parks nearby.',
-      ],
-      SHORT_TERM: [
-        'Modern apartment available for short-term rental. Fully furnished with all necessary amenities for a comfortable stay.',
-        'Cozy apartment perfect for temporary stays. Well-connected to city center and main attractions.',
-        'Stylish apartment ideal for business travelers or tourists. Includes high-speed internet and modern furnishings.',
-      ],
-      VACATION: [
-        'Holiday apartment in excellent location. Perfect base for exploring the city and enjoying local culture.',
-        'Vacation rental with comfortable accommodations. Close to tourist attractions and dining options.',
-        'Charming holiday apartment with all comforts of home. Ideal for families or couples seeking a memorable vacation.',
-      ],
-    },
-    VILLA: {
-      SALE: [
-        'Magnificent villa with stunning architecture and luxurious finishes. Features spacious gardens, swimming pool, and breathtaking views.',
-        'Exclusive villa offering privacy and elegance. Includes multiple bedrooms, entertainment areas, and premium amenities.',
-        'Prestigious villa in sought-after location. Boasts elegant interiors, landscaped grounds, and modern conveniences.',
-        'Stunning villa with exceptional attention to detail. Perfect for those seeking luxury living in a serene environment.',
-      ],
-      RENT: [
-        'Impressive villa available for long-term rental. Features expansive living spaces, private garden, and premium finishes.',
-        'Elegant villa in prestigious area. Ideal for families seeking space, comfort, and exclusive amenities.',
-        'Beautiful villa with refined interiors. Includes outdoor spaces perfect for entertaining and relaxation.',
-      ],
-      SHORT_TERM: [
-        'Luxury villa available for short-term stays. Perfect for special occasions or executive accommodation.',
-        'Exclusive villa rental with full amenities. Ideal for hosting events or enjoying a premium living experience.',
-      ],
-      VACATION: [
-        'Spectacular holiday villa with pool and panoramic views. Perfect retreat for relaxation and entertainment.',
-        'Dream vacation villa in idyllic setting. Features include outdoor dining area, barbecue, and lush gardens.',
-        'Exquisite holiday villa offering ultimate comfort and privacy. Ideal for memorable family vacations.',
-      ],
-    },
-    STUDIO: {
-      SALE: [
-        'Efficient studio apartment with smart layout. Perfect for first-time buyers or investment opportunity.',
-        'Modern studio in excellent location. Features contemporary design and all essential amenities.',
-        'Compact studio with great potential. Ideal for singles or as a rental investment property.',
-      ],
-      RENT: [
-        'Comfortable studio apartment for rent. Perfect for students or young professionals starting their career.',
-        'Well-designed studio with efficient use of space. Located in convenient area with good transport links.',
-        'Cozy studio in vibrant neighborhood. Includes modern appliances and affordable living solution.',
-      ],
-      SHORT_TERM: [
-        'Functional studio for short-term accommodation. Fully equipped with everything needed for comfortable stay.',
-        'Modern studio ideal for business trips or short visits. Centrally located with excellent amenities.',
-      ],
-      VACATION: [
-        'Charming studio perfect for solo travelers or couples. Great location for exploring the city.',
-        'Comfortable vacation studio with all essentials. Affordable option in prime tourist area.',
-      ],
-    },
-    GARAGE: {
-      SALE: [
-        'Secure garage in prime location. Perfect for vehicle storage or additional space needs.',
-        'Well-maintained garage with easy access. Ideal investment or practical solution for parking.',
-        'Spacious garage in convenient location. Suitable for car storage or small workshop use.',
-      ],
-      RENT: [
-        'Garage available for rent in central area. Secure parking solution with good access.',
-        'Practical garage space for monthly rental. Protected storage for vehicles or equipment.',
-      ],
-      SHORT_TERM: [
-        'Garage available for short-term rental. Convenient temporary parking solution.',
-      ],
-      VACATION: [
-        'Secure garage space for vacation parking needs. Safe storage during your stay.',
-      ],
-    },
-  };
-
-  const options = descriptions[propertyType][insertionType];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-// Generate random property data
-function generateRandomPropertyData(propertyType: PropertyType, insertionType: InsertionType) {
-  const energyClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-  const conditions = [PropertyCondition.NEW, PropertyCondition.GOOD_CONDITION, PropertyCondition.TO_RENOVATE];
-
-  // Adjust values based on property type
-  let surfaceArea: number, rooms: number, floors: number, priceMultiplier: number;
-
-  switch (propertyType) {
-    case PropertyType.VILLA:
-      surfaceArea = Math.floor(Math.random() * 250) + 150; // 150-400 sqm
-      rooms = Math.floor(Math.random() * 5) + 4; // 4-8 rooms
-      floors = Math.floor(Math.random() * 2) + 2; // 2-3 floors
-      priceMultiplier = 3;
-      break;
-    case PropertyType.APARTMENT:
-      surfaceArea = Math.floor(Math.random() * 100) + 50; // 50-150 sqm
-      rooms = Math.floor(Math.random() * 4) + 2; // 2-5 rooms
-      floors = Math.floor(Math.random() * 3) + 1; // 1-3 floors
-      priceMultiplier = 1.5;
-      break;
-    case PropertyType.STUDIO:
-      surfaceArea = Math.floor(Math.random() * 25) + 25; // 25-50 sqm
-      rooms = 1;
-      floors = 1;
-      priceMultiplier = 1;
-      break;
-    case PropertyType.GARAGE:
-      surfaceArea = Math.floor(Math.random() * 20) + 15; // 15-35 sqm
-      rooms = 1;
-      floors = 1;
-      priceMultiplier = 0.3;
-      break;
-    default:
-      surfaceArea = 80;
-      rooms = 3;
-      floors = 1;
-      priceMultiplier = 1;
-  }
-
-  // Calculate price based on insertion type
-  let basePrice: number;
-  if (insertionType === InsertionType.SALE) {
-    basePrice = surfaceArea * (Math.random() * 2000 + 2000) * priceMultiplier; // €2000-4000 per sqm
-  } else if (insertionType === InsertionType.RENT) {
-    basePrice = surfaceArea * (Math.random() * 10 + 10) * priceMultiplier; // €10-20 per sqm/month
-  } else if (insertionType === InsertionType.SHORT_TERM) {
-    basePrice = surfaceArea * (Math.random() * 20 + 30) * priceMultiplier; // €30-50 per sqm/month
-  } else {
-    basePrice = surfaceArea * (Math.random() * 15 + 25) * priceMultiplier; // €25-40 per sqm/week
-  }
-
-  return {
-    surfaceArea,
-    rooms,
-    floors,
-    price: Math.round(basePrice),
-    energyClass: energyClasses[Math.floor(Math.random() * energyClasses.length)],
-    propertyCondition: conditions[Math.floor(Math.random() * conditions.length)],
-    elevator: Math.random() > 0.5,
-    concierge: Math.random() > 0.7,
-    airConditioning: Math.random() > 0.6,
-    furnished: Math.random() > 0.5,
-  };
-}
-
-// Create agencies
-async function createAgencies() {
-  console.log('\n📍 Creating agencies...');
-  const agencies = [];
-  const timestamp = Date.now();
-
-  for (let i = 0; i < 10; i++) {
-    const city = ITALIAN_CITIES[i % ITALIAN_CITIES.length];
-    const agencyName = AGENCY_NAMES[i];
+        latitude: cityData.lat + randomCoordinateOffset() * 0.1,
+        longitude: cityData.lng + randomCoordinateOffset() * 0.1,
+        agencyAdminId: agencyAdmin.userId,
+      },
+    });
     
-    // Generate random agency address
-    const agencyAddress = generateStreetAddress(city.nameLat);
-    console.log(`  Geocoding agency: ${agencyName} in ${city.name}...`);
+    const agentIds: number[] = [];
+    const numAgents = randomInt(2, 5);
     
-    const geocoded = await geocodeAddress(agencyAddress);
-    await delay(API_DELAY);
-
-    if (!geocoded) {
-      console.log(`  ⚠️  Failed to geocode ${agencyName}, using approximate coordinates`);
-    }
-
-    // Create agency admin user
-    const hashedPassword = await bcrypt.hash('TestPassword123!', 10);
-    const email = `${agencyName.toLowerCase().replace(/\s+/g, '.')}.${timestamp}@test.com`;
-    
-    try {
-      const user = await prisma.user.create({
+    for (let j = 0; j < numAgents; j++) {
+      const agentUser = await prisma.user.create({
         data: {
-          email: email,
+          email: `agent${i * 10 + j + 1}@agency.com`,
           password: hashedPassword,
-          firstName: FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)],
-          lastName: LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)],
-          phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
-          role: Role.ADMIN_AGENCY,
+          firstName: randomElement(['Marco', 'Luca', 'Giovanni', 'Francesco', 'Alessandro', 'Andrea', 'Matteo', 'Lorenzo', 'Simone', 'Davide', 'Maria', 'Giulia', 'Chiara', 'Sara', 'Valentina', 'Francesca', 'Elena', 'Alessia', 'Martina', 'Federica']),
+          lastName: randomElement(['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo', 'Conti', 'De Luca', 'Costa', 'Giordano', 'Mancini', 'Rizzo', 'Lombardi', 'Moretti']),
+          phone: `+39 3${randomInt(20, 99)} ${randomInt(1000000, 9999999)}`,
+          role: Role.AGENT,
         },
       });
-
-      // Create AgencyAdmin first
-      await prisma.agencyAdmin.create({
-        data: {
-          userId: user.userId,
-        },
-      });
-
-      // Then create the Agency
-      const agency = await prisma.agency.create({
-        data: {
-          businessName: agencyName,
-          legalName: `${agencyName} S.r.l.`,
-          vatNumber: `IT${Math.floor(Math.random() * 90000000000) + 10000000000}`,
-          email: email,
-          phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
-          address: geocoded?.address || `${STREET_NAMES[0]} 1`,
-          city: geocoded?.city || city.name,
-          postalCode: geocoded?.postalCode || '00100',
-          province: geocoded?.province || city.province,
-          country: 'Italy',
-          latitude: geocoded?.latitude || city.lat,
-          longitude: geocoded?.longitude || city.lng,
-          agencyAdminId: user.userId,
-        },
-      });
-
-      agencies.push({ agency, city });
-      console.log(`  ✅ Created agency: ${agencyName} in ${city.name}`);
-    } catch (error) {
-      console.error(`  ❌ Failed to create agency ${agencyName}:`, error.message);
-    }
-  }
-
-  return agencies;
-}
-
-// Create agents
-async function createAgents(agencies: any[]) {
-  console.log('\n👥 Creating agents...');
-  const agents = [];
-  const timestamp = Date.now();
-
-  for (const { agency, city } of agencies) {
-    const numAgents = Math.floor(Math.random() * 2) + 2; // 2-3 agents per agency
-
-    for (let i = 0; i < numAgents; i++) {
-      const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-      const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-      const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${timestamp}.${agency.agencyId}.${i}@test.com`;
-      const hashedPassword = await bcrypt.hash('TestPassword123!', 10);
-
-      try {
-        const user = await prisma.user.create({
-          data: {
-            email: email,
-            password: hashedPassword,
-            firstName: firstName,
-            lastName: lastName,
-            phone: `+39 ${Math.floor(Math.random() * 900000000) + 100000000}`,
-            role: Role.AGENT,
-          },
-        });
-
-        await prisma.agent.create({
-          data: {
-            userId: user.userId,
-            agencyId: agency.agencyId,
-          },
-        });
-
-        agents.push({ userId: user.userId, agencyId: agency.agencyId, city });
-        console.log(`  ✅ Created agent: ${firstName} ${lastName} for ${agency.businessName}`);
-      } catch (error) {
-        console.error(`  ❌ Failed to create agent:`, error.message);
-      }
-    }
-  }
-
-  return agents;
-}
-
-// Create properties
-async function createProperties(agents: any[]) {
-  console.log('\n🏠 Creating properties...');
-  const propertyTypes = [PropertyType.APARTMENT, PropertyType.VILLA, PropertyType.STUDIO, PropertyType.GARAGE];
-  const insertionTypes = [InsertionType.SALE, InsertionType.RENT, InsertionType.SHORT_TERM, InsertionType.VACATION];
-
-  let createdCount = 0;
-  let failedCount = 0;
-
-  // Calculate number of properties per city based on weight
-  const propertyDistribution: Array<{ city: any; count: number }> = [];
-  const totalWeight = ITALIAN_CITIES.reduce((sum, city) => sum + city.weight, 0);
-
-  for (const city of ITALIAN_CITIES) {
-    const count = Math.round((city.weight / totalWeight) * TARGET_PROPERTIES);
-    propertyDistribution.push({ city, count });
-  }
-
-  for (const { city, count } of propertyDistribution) {
-    console.log(`\n  📍 Creating ${count} properties in ${city.name}...`);
-
-    for (let i = 0; i < count; i++) {
-      const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
-      const insertionType = insertionTypes[Math.floor(Math.random() * insertionTypes.length)];
-
-      // Select a random agent from the same city or any if not available
-      const cityAgents = agents.filter(a => a.city.name === city.name);
-      const agent = cityAgents.length > 0 
-        ? cityAgents[Math.floor(Math.random() * cityAgents.length)]
-        : agents[Math.floor(Math.random() * agents.length)];
-
-      // Generate random address
-      const streetAddress = generateStreetAddress(city.nameLat);
       
-      // Geocode the address
-      const geocoded = await geocodeAddress(streetAddress);
-      await delay(API_DELAY);
-
-      if (!geocoded) {
-        failedCount++;
-        console.log(`    ⚠️  Failed to geocode property ${createdCount + failedCount + 1}, skipping...`);
-        continue;
-      }
-
-      // Generate property data
-      const propertyData = generateRandomPropertyData(propertyType, insertionType);
-      const description = generatePropertyDescription(propertyType, insertionType);
-
-      try {
-        const property = await prisma.property.create({
-          data: {
-            description: description,
-            price: propertyData.price,
-            surfaceArea: propertyData.surfaceArea,
-            rooms: propertyData.rooms,
-            floors: propertyData.floors,
-            elevator: propertyData.elevator,
-            energyClass: propertyData.energyClass,
-            concierge: propertyData.concierge,
-            airConditioning: propertyData.airConditioning,
-            furnished: propertyData.furnished,
-            propertyType: propertyType,
-            insertionType: insertionType,
-            propertyCondition: propertyData.propertyCondition,
-            address: geocoded.address,
-            city: geocoded.city,
-            postalCode: geocoded.postalCode,
-            province: geocoded.province,
-            country: geocoded.country,
-            latitude: geocoded.latitude,
-            longitude: geocoded.longitude,
-            agencyId: agent.agencyId,
-            agentId: agent.userId,
-          },
-        });
-
-        createdCount++;
-
-        if (createdCount % 50 === 0) {
-          console.log(`    ✅ Progress: ${createdCount}/${TARGET_PROPERTIES} properties created (${failedCount} failed)`);
-        }
-      } catch (error) {
-        failedCount++;
-        console.error(`    ❌ Failed to create property:`, error.message);
-      }
+      await prisma.agent.create({
+        data: {
+          userId: agentUser.userId,
+          agencyId: agency.agencyId,
+        },
+      });
+      
+      agentIds.push(agentUser.userId);
     }
+    
+    agencies.push({ agencyId: agency.agencyId, agents: agentIds });
+    console.log(`Created agency: ${agencyNames[i]} with ${numAgents} agents`);
   }
-
-  console.log(`\n  ✅ Total properties created: ${createdCount}`);
-  console.log(`  ⚠️  Total failures: ${failedCount}`);
   
-  return { createdCount, failedCount };
-}
-
-// Main seeding function
-async function main() {
-  console.log('🌱 Starting database seeding...');
-  console.log(`📊 Target: ${TARGET_PROPERTIES} properties across Italy`);
-  console.log(`🏛️  Rome properties: ${ROME_PROPERTIES}`);
-
-  if (!GOOGLE_MAPS_API_KEY) {
-    console.error('❌ GOOGLE_MAPS_API_KEY not found in environment variables!');
-    process.exit(1);
-  }
-
-  try {
-    // Optional: Clean existing data (commented out for safety)
-    // console.log('\n🧹 Cleaning existing data...');
-    // await prisma.property.deleteMany({});
-    // await prisma.agent.deleteMany({});
-    // await prisma.assistant.deleteMany({});
-    // await prisma.agency.deleteMany({});
-    // await prisma.agencyAdmin.deleteMany({});
-    // await prisma.user.deleteMany({ where: { role: { in: [Role.AGENT, Role.ADMIN_AGENCY, Role.ASSISTANT] } } });
-    // console.log('✅ Cleaned existing data');
-
-    // Create agencies
-    const agencies = await createAgencies();
+  console.log('Creating 300 properties...');
+  
+  for (let i = 0; i < 300; i++) {
+    const agency = randomElement(agencies);
+    const agentId = randomElement(agency.agents);
+    const cityData = randomElement(italianCities);
+    const insertionType = randomElement([InsertionType.SALE, InsertionType.RENT]);
+    const propertyType = randomElement([PropertyType.VILLA, PropertyType.APARTMENT, PropertyType.STUDIO, PropertyType.GARAGE]);
+    const propertyCondition = randomElement([PropertyCondition.NEW, PropertyCondition.GOOD_CONDITION, PropertyCondition.TO_RENOVATE]);
     
-    if (agencies.length === 0) {
-      console.error('❌ No agencies created, cannot continue');
-      process.exit(1);
+    let surfaceArea: number;
+    let rooms: number;
+    let floors: number;
+    
+    switch (propertyType) {
+      case PropertyType.VILLA:
+        surfaceArea = randomInt(200, 500);
+        rooms = randomInt(6, 12);
+        floors = randomInt(2, 4);
+        break;
+      case PropertyType.APARTMENT:
+        surfaceArea = randomInt(50, 180);
+        rooms = randomInt(2, 6);
+        floors = randomInt(1, 2);
+        break;
+      case PropertyType.STUDIO:
+        surfaceArea = randomInt(25, 50);
+        rooms = 1;
+        floors = 1;
+        break;
+      case PropertyType.GARAGE:
+        surfaceArea = randomInt(15, 40);
+        rooms = 1;
+        floors = 1;
+        break;
     }
-
-    // Create agents
-    const agents = await createAgents(agencies);
     
-    if (agents.length === 0) {
-      console.error('❌ No agents created, cannot continue');
-      process.exit(1);
+    const streetNumber = randomInt(1, 300);
+    const price = generatePrice(insertionType, propertyType, surfaceArea);
+    const lat = cityData.lat + randomCoordinateOffset();
+    const lng = cityData.lng + randomCoordinateOffset();
+    
+    const property = await prisma.property.create({
+      data: {
+        agencyId: agency.agencyId,
+        agentId: agentId,
+        description: randomElement(descriptions),
+        price: price,
+        surfaceArea: surfaceArea,
+        rooms: rooms,
+        floors: floors,
+        elevator: propertyType !== PropertyType.GARAGE && Math.random() > 0.4,
+        energyClass: randomElement(['A', 'B', 'C', 'D', 'E', 'F', 'G']),
+        concierge: propertyType === PropertyType.APARTMENT && Math.random() > 0.6,
+        airConditioning: Math.random() > 0.3,
+        insertionType: insertionType,
+        propertyType: propertyType,
+        address: `${randomElement(streetNames)}, ${streetNumber}`,
+        city: cityData.city,
+        postalCode: cityData.postalCode,
+        province: cityData.province,
+        country: 'Italy',
+        latitude: lat,
+        longitude: lng,
+        furnished: propertyType !== PropertyType.GARAGE ? Math.random() > 0.5 : null,
+        propertyCondition: propertyCondition,
+      },
+    });
+    
+    const numImages = randomInt(3, 6);
+    const usedImages = new Set<string>();
+    
+    for (let j = 0; j < numImages; j++) {
+      let imageUrl: string;
+      if (j === 0) {
+        imageUrl = propertyImages[i % propertyImages.length];
+      } else {
+        do {
+          imageUrl = Math.random() > 0.5 
+            ? randomElement(propertyImages) 
+            : randomElement(interiorImages);
+        } while (usedImages.has(imageUrl));
+      }
+      usedImages.add(imageUrl);
+      
+      await prisma.propertyImage.create({
+        data: {
+          propertyId: property.propertyId,
+          url: imageUrl,
+          order: j,
+        },
+      });
     }
-
-    // Create properties
-    const { createdCount, failedCount } = await createProperties(agents);
-
-    console.log('\n' + '='.repeat(60));
-    console.log('✅ Seeding completed successfully!');
-    console.log('='.repeat(60));
-    console.log(`📍 Agencies created: ${agencies.length}`);
-    console.log(`👥 Agents created: ${agents.length}`);
-    console.log(`🏠 Properties created: ${createdCount}`);
-    console.log(`⚠️  Failed properties: ${failedCount}`);
-    console.log('='.repeat(60));
     
-  } catch (error) {
-    console.error('❌ Seeding failed:', error);
-    throw error;
-  } finally {
-    await prisma.$disconnect();
+    if ((i + 1) % 50 === 0) {
+      console.log(`Created ${i + 1} properties...`);
+    }
   }
+  
+  console.log('Seed completed successfully!');
+  console.log(`Created ${agencyNames.length} agencies with agents`);
+  console.log('Created 300 properties with images');
 }
 
 main()
-  .catch((error) => {
-    console.error(error);
+  .catch((e) => {
+    console.error('Error during seed:', e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
 

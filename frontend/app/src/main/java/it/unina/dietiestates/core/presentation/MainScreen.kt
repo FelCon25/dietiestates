@@ -14,6 +14,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import it.unina.dietiestates.app.Route
+import it.unina.dietiestates.core.presentation.notification.rememberNotificationPermissionState
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
 
 @Composable
@@ -25,6 +26,14 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val view = LocalView.current
+
+    val notificationPermissionState = rememberNotificationPermissionState()
+    
+    LaunchedEffect(Unit) {
+        if (!notificationPermissionState.hasPermission) {
+            notificationPermissionState.requestPermission()
+        }
+    }
 
     LaunchedEffect(currentDestination) {
         currentDestination?.let { navDestination ->

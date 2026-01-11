@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import it.unina.dietiestates.BuildConfig
+import it.unina.dietiestates.core.presentation.notification.rememberNotificationPermissionState
 import it.unina.dietiestates.core.presentation.util.parseImageUrl
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
 import it.unina.dietiestates.features.profile.domain.NotificationCategory
@@ -94,6 +95,29 @@ fun ProfileScreen(
             }
         }
     )
+
+    var pendingNotificationAction by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+    var pendingNotificationValue by remember { mutableStateOf(false) }
+
+    val notificationPermissionState = rememberNotificationPermissionState(
+        onPermissionGranted = {
+            pendingNotificationAction?.invoke(pendingNotificationValue)
+            pendingNotificationAction = null
+        },
+        onPermissionDenied = {
+            pendingNotificationAction = null
+        }
+    )
+
+    fun requestNotificationWithPermission(action: (Boolean) -> Unit, enabled: Boolean) {
+        if (enabled && !notificationPermissionState.hasPermission) {
+            pendingNotificationAction = action
+            pendingNotificationValue = enabled
+            notificationPermissionState.requestPermission()
+        } else {
+            action(enabled)
+        }
+    }
 
     ObserveAsEvents(viewModel.eventsChannelFlow) { event ->
         when(event){
@@ -324,7 +348,9 @@ fun ProfileScreen(
                                 Switch(
                                     enabled = !state.isPropertyNotificationStatusChanging,
                                     checked = state.notificationPreferences.any{ it == NotificationCategory.NEW_PROPERTY_MATCH },
-                                    onCheckedChange = viewModel::setPropertyNotificationStatus
+                                    onCheckedChange = { enabled ->
+                                        requestNotificationWithPermission(viewModel::setPropertyNotificationStatus, enabled)
+                                    }
                                 )
                             }
 
@@ -356,7 +382,9 @@ fun ProfileScreen(
                                 Switch(
                                     enabled = !state.isPromotionalNotificationStatusChanging,
                                     checked = state.notificationPreferences.any{ it == NotificationCategory.PROMOTIONAL },
-                                    onCheckedChange = viewModel::setPromotionalNotificationStatus
+                                    onCheckedChange = { enabled ->
+                                        requestNotificationWithPermission(viewModel::setPromotionalNotificationStatus, enabled)
+                                    }
                                 )
                             }
                         }

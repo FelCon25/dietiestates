@@ -1,7 +1,91 @@
 import { PrismaClient, InsertionType, PropertyType, PropertyCondition, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import axios from 'axios';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 
 const prisma = new PrismaClient();
+
+class S3Service {
+  private readonly s3Client: S3Client;
+  private readonly bucketName: string;
+  private readonly region: string;
+
+  constructor() {
+    this.region = process.env.AWS_REGION || 'eu-west-1';
+    this.bucketName = process.env.AWS_S3_BUCKET_NAME || '';
+
+    if (!this.bucketName) {
+      throw new Error('AWS_S3_BUCKET_NAME environment variable is required');
+    }
+
+    this.s3Client = new S3Client({
+      region: this.region,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
+    });
+  }
+
+  async uploadFile(
+    buffer: Buffer,
+    key: string,
+    mimeType: string,
+  ): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: mimeType,
+      ACL: 'public-read',
+    });
+
+    await this.s3Client.send(command);
+
+    return this.getPublicUrl(key);
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+
+    await this.s3Client.send(command);
+  }
+
+  extractKeyFromUrl(url: string): string | null {
+    if (!url) return null;
+
+    const regex = new RegExp(
+      `https?://${this.bucketName}\\.s3\\.${this.region}\\.amazonaws\\.com/(.+)`,
+    );
+    const match = url.match(regex);
+
+    if (match) {
+      return match[1];
+    }
+
+    const simpleRegex = new RegExp(
+      `https?://${this.bucketName}\\.s3\\.amazonaws\\.com/(.+)`,
+    );
+    const simpleMatch = url.match(simpleRegex);
+
+    if (simpleMatch) {
+      return simpleMatch[1];
+    }
+
+    return null;
+  }
+
+  private getPublicUrl(key: string): string {
+    return `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${key}`;
+  }
+}
 
 const italianCities = [
   { city: 'Rome', province: 'RM', postalCode: '00100', lat: 41.9028, lng: 12.4964 },
@@ -77,9 +161,52 @@ const descriptions = [
   'Meticulously maintained property ready for immediate occupancy. New roof, HVAC, and electrical systems.',
 ];
 
-function getDynamicImageUrl(category: 'house' | 'interior', index: number): string {
-  const keyword = category === 'house' ? 'house,exterior' : 'interior,room';
-  return `https://loremflickr.com/800/600/${keyword}?lock=${index}`;
+function getRealEstateImageUrl(category: 'exterior' | 'interior', index: number): string {
+  const exteriorKeywords = ['house', 'villa', 'apartment-building', 'real-estate', 'home-exterior', 'modern-house', 'luxury-home', 'residential-building'];
+  const interiorKeywords = ['apartment-interior', 'living-room', 'bedroom', 'kitchen', 'bathroom', 'home-interior', 'modern-interior', 'luxury-interior'];
+  
+  const keywords = category === 'exterior' ? exteriorKeywords : interiorKeywords;
+  const keyword = keywords[index % keywords.length];
+  return `https://source.unsplash.com/800x600/?${keyword}&sig=${index}`;
+}
+
+async function downloadImage(url: string): Promise<{ buffer: Buffer; mimeType: string }> {
+  try {
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+
+    const buffer = Buffer.from(response.data, 'binary');
+    const mimeType = response.headers['content-type'] || 'image/jpeg';
+    
+    return { buffer, mimeType };
+  } catch (error) {
+    console.error(`Error downloading image from ${url}:`, error);
+    throw error;
+  }
+}
+
+async function uploadImageToS3(
+  s3Service: S3Service,
+  propertyId: number,
+  imageIndex: number,
+  category: 'exterior' | 'interior',
+  index: number,
+): Promise<string> {
+  const imageUrl = getRealEstateImageUrl(category, index);
+  const { buffer, mimeType } = await downloadImage(imageUrl);
+
+  const timestamp = Date.now();
+  const ext = mimeType.includes('png') ? '.png' : '.jpg';
+  const key = `property-images/${propertyId}/image_${imageIndex}_${timestamp}${ext}`;
+
+  const s3Url = await s3Service.uploadFile(buffer, key, mimeType);
+  
+  return s3Url;
 }
 
 function randomElement<T>(arr: T[]): T {
@@ -107,8 +234,45 @@ function generatePrice(insertionType: InsertionType, propertyType: PropertyType,
   return Math.round(basePrice);
 }
 
+async function deleteAllExistingImages(s3Service: S3Service): Promise<void> {
+  console.log('Deleting existing images...');
+  
+  const allImages = await prisma.propertyImage.findMany({
+    select: { imageId: true, url: true },
+  });
+
+  console.log(`Found ${allImages.length} existing images to delete`);
+
+  for (const image of allImages) {
+    try {
+      const s3Key = s3Service.extractKeyFromUrl(image.url);
+      if (s3Key) {
+        await s3Service.deleteFile(s3Key);
+      }
+    } catch (error) {
+      console.error(`Error deleting image ${image.imageId} from S3:`, error);
+    }
+  }
+
+  await prisma.propertyImage.deleteMany({});
+  console.log('All existing images deleted from database');
+  
+  const allProperties = await prisma.property.findMany({
+    select: { propertyId: true },
+  });
+  
+  console.log(`Found ${allProperties.length} existing properties to delete`);
+  await prisma.property.deleteMany({});
+  console.log('All existing properties deleted');
+}
+
 async function main() {
   console.log('Starting seed...');
+  
+  const s3Service = new S3Service();
+  console.log('S3Service initialized');
+  
+  await deleteAllExistingImages(s3Service);
   
   const hashedPassword = await bcrypt.hash('Password123!', 10);
   
@@ -256,17 +420,30 @@ async function main() {
     const numImages = randomInt(3, 6);
     
     for (let j = 0; j < numImages; j++) {
-      const imageUrl = j === 0 
-        ? getDynamicImageUrl('house', i) 
-        : getDynamicImageUrl('interior', i * 10 + j); 
+      try {
+        const category = j === 0 ? 'exterior' : 'interior';
+        const index = j === 0 ? i : i * 10 + j;
+        
+        const imageUrl = await uploadImageToS3(
+          s3Service,
+          property.propertyId,
+          j,
+          category,
+          index,
+        );
 
-      await prisma.propertyImage.create({
-        data: {
-          propertyId: property.propertyId,
-          url: imageUrl,
-          order: j,
-        },
-      });
+        await prisma.propertyImage.create({
+          data: {
+            propertyId: property.propertyId,
+            url: imageUrl,
+            order: j,
+          },
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error(`Error creating image ${j} for property ${i + 1}:`, error);
+      }
     }
     
     if ((i + 1) % 50 === 0) {

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAssistantDto } from './dto/create-assistant.dto';
 import * as bcrypt from 'bcrypt';
@@ -166,6 +166,9 @@ export class AgencyAdminService {
                 throw new BadRequestException('Assistant does not have an agency');
             }
             agency = assistant.agency;
+        }
+        else {
+            throw new UnauthorizedException('Invalid role');
         }
         
         if(!agency) {

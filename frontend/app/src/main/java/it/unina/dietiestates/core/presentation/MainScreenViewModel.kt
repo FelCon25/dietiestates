@@ -94,6 +94,23 @@ class MainScreenViewModel(
                     authRepository.sendPushNotificationToken(token)
                 }
             }
+            
+            is MainScreenEvent.OnRetryConnection -> {
+                _state.update { it.copy(showNoConnection = false, isReady = false) }
+                viewModelScope.launch {
+                    val accessToken = tokenManager.getAccessToken()
+                    if (accessToken == null) {
+                        _state.update {
+                            it.copy(
+                                startDestination = Route.AuthGraph,
+                                isReady = true
+                            )
+                        }
+                    } else {
+                        getMe()
+                    }
+                }
+            }
         }
     }
 
@@ -118,6 +135,13 @@ class MainScreenViewModel(
                         is DataError.Remote.Unauthorized -> {
                             _state.update {
                                 it.copy(startDestination = Route.AuthGraph)
+                            }
+                        }
+                        is DataError.Remote.NoInternet,
+                        is DataError.Remote.Server,
+                        is DataError.Remote.RequestTimeout -> {
+                            _state.update {
+                                it.copy(showNoConnection = true, isReady = true)
                             }
                         }
                         else -> {

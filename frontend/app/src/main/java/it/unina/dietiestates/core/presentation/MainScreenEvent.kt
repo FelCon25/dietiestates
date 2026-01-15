@@ -11,4 +11,6 @@ sealed class MainScreenEvent{
     data object OnSendPushNotificationToken: MainScreenEvent()
 
     data class OnReceivedPushNotification(val propertyId: Int): MainScreenEvent()
+    
+    data object OnRetryConnection: MainScreenEvent()
 }

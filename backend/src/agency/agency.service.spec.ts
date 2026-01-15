@@ -1,437 +1,207 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AgencyService } from './agency.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { CreateAgencyDto } from './dto/create-agency.dto';
 
-/*
- * ============================================================================
- * RWECT (Weak Robust Equivalence Class Testing)
- * for AgencyService.create
- * ============================================================================
- *
- * Method Signature:
- * create(userId: number, dto: CreateAgencyDto): Promise<Agency>
- *
- * ============================================================================
- * EQUIVALENCE CLASSES FOR ALL PARAMETERS
- * ============================================================================
- *
- * PARAMETER 1: userId (number)
- * Internal validations in service (not DTO/guard)
- * ┌─────────┬─────────────────────────────────────────┬──────────────────┐
- * │ EC ID   │ Description                             │ Representative   │
- * ├─────────┼─────────────────────────────────────────┼──────────────────┤
- * │ EC1.1   │ VALID: User ADMIN_AGENCY without agency │ userId = 1       │
- * │ EC1.2   │ INVALID: User does not exist            │ userId = 999     │
- * │ EC1.3   │ INVALID: User exists, wrong role        │ userId = 2       │
- * │ EC1.4   │ INVALID: ADMIN_AGENCY already has agency│ userId = 3       │
- * └─────────┴─────────────────────────────────────────┴──────────────────┘
- *
- * PARAMETER 2: dto.email (string)
- * Internal validation in service (email uniqueness check)
- * ┌─────────┬─────────────────────────────────────────┬──────────────────────┐
- * │ EC ID   │ Description                             │ Representative       │
- * ├─────────┼─────────────────────────────────────────┼──────────────────────┤
- * │ EC2.1   │ VALID: Email not used by other agencies │ "new@agency.com"     │
- * │ EC2.2   │ INVALID: Email already used             │ "existing@agency.com"│
- * └─────────┴─────────────────────────────────────────┴──────────────────────┘
- *
- * Note: Other DTO fields (businessName, address, etc.) are validated by 
- * class-validator decorators, not tested in unit tests.
- *
- * ============================================================================
- * RWECT TEST MATRIX
- * ============================================================================
- *
- * VALID COMBINATIONS:
- * │ TC  │ userId    │ dto.email │ Expected Result                      │
- * ├─────┼───────────┼───────────┼──────────────────────────────────────┤
- * │ TC1 │ EC1.1     │ EC2.1     │ Success: agency created              │
- *
- * INVALID COMBINATIONS (one invalid + others valid):
- * │ TC  │ userId    │ dto.email │ Expected Result                      │
- * ├─────┼───────────┼───────────┼──────────────────────────────────────┤
- * │ TC2 │ EC1.2     │ EC2.1     │ NotFoundException: User not found    │
- * │ TC3 │ EC1.3     │ EC2.1     │ ForbiddenException: Only admins      │
- * │ TC4 │ EC1.4     │ EC2.1     │ BadRequestException: already has     │
- * │ TC5 │ EC1.1     │ EC2.2     │ BadRequestException: email exists    │
- *
- * ============================================================================
- */
+describe('AgencyService.create - R-WECT', () => {
+    let service: AgencyService;
+    let prisma: any;
 
-describe('AgencyService', () => {
-  let service: AgencyService;
+    // EC1: userId
+    const EC1_1_VALID_ADMIN_NO_AGENCY = 1;
+    const EC1_2_INVALID_USER_NOT_EXISTS = 999;
+    const EC1_3_INVALID_USER_NOT_ADMIN = 2;
+    const EC1_4_INVALID_ADMIN_HAS_AGENCY = 3;
 
-  // Mock user IDs
-  const VALID_ADMIN_WITHOUT_AGENCY = 1;
-  const INVALID_USER = 999;
-  const USER_WITH_WRONG_ROLE = 2;
-  const ADMIN_WITH_EXISTING_AGENCY = 3;
+    // EC2: dto.email
+    const EC2_1_VALID_EMAIL_NOT_EXISTS = 'newagency@test.com';
+    const EC2_2_INVALID_EMAIL_EXISTS = 'existing@test.com';
 
-  // Mock DTO
-  const validDto = {
-    businessName: 'Test Agency',
-    legalName: 'Test Agency SRL',
-    vatNumber: 'IT12345678901',
-    email: 'new@agency.com',
-    address: 'Via Roma 1',
-    city: 'Milano',
-    postalCode: '20100',
-    province: 'MI',
-    country: 'Italy',
-    latitude: 45.4642,
-    longitude: 9.19,
-  };
+    const createMockDto = (overrides?: Partial<CreateAgencyDto>): CreateAgencyDto => ({
+        businessName: 'Test Agency',
+        legalName: 'Test Agency SRL',
+        vatNumber: '12345678901',
+        email: EC2_1_VALID_EMAIL_NOT_EXISTS,
+        address: 'Via Test 123',
+        city: 'Rome',
+        postalCode: '00100',
+        province: 'RM',
+        country: 'Italy',
+        latitude: 41.9028,
+        longitude: 12.4964,
+        ...overrides,
+    });
 
-  // Mock PrismaService
-  const mockPrismaService = {
-    user: {
-      findUnique: jest.fn(),
-    },
-    agencyAdmin: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-    },
-    agency: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-    },
-  };
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AgencyService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+    const mockPrismaService = {
+        user: {
+            findUnique: jest.fn(),
         },
-      ],
-    }).compile();
-
-    service = module.get<AgencyService>(AgencyService);
-  });
-
-  // ============================================================================
-  // VALID COMBINATIONS
-  // ============================================================================
-
-  describe('create - Valid Combinations', () => {
-    
-    /**
-     * TC1: Valid admin creates agency with new email
-     * ┌──────────────────────────────────────────────────────────────┐
-     * │ userId: EC1.1 (ADMIN without agency)                         │
-     * │ dto.email: EC2.1 (new email)                                 │
-     * │ Expected: Success - agency created                           │
-     * └──────────────────────────────────────────────────────────────┘
-     */
-    it('TC1: should create agency when admin has no agency and email is new', async () => {
-      // Arrange
-      const expectedAgency = {
-        agencyId: 100,
-        agencyAdminId: VALID_ADMIN_WITHOUT_AGENCY,
-        ...validDto,
-      };
-
-      // User exists and is ADMIN_AGENCY
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
-
-      // AgencyAdmin record exists
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-      });
-
-      // No existing agency for this admin (first call with agencyAdminId)
-      // No agency with this email (second call with email)
-      mockPrismaService.agency.findUnique
-        .mockResolvedValueOnce(null)  // Check by agencyAdminId
-        .mockResolvedValueOnce(null); // Check by email
-
-      mockPrismaService.agency.create.mockResolvedValue(expectedAgency);
-
-      // Act
-      const result = await service.create(VALID_ADMIN_WITHOUT_AGENCY, validDto);
-
-      // Assert
-      expect(result).toEqual(expectedAgency);
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { userId: VALID_ADMIN_WITHOUT_AGENCY },
-        select: { role: true },
-      });
-      expect(mockPrismaService.agency.create).toHaveBeenCalledWith({
-        data: {
-          agencyAdminId: VALID_ADMIN_WITHOUT_AGENCY,
-          ...validDto,
+        agencyAdmin: {
+            findUnique: jest.fn(),
+            create: jest.fn(),
         },
-      });
+        agency: {
+            findUnique: jest.fn(),
+            create: jest.fn(),
+        },
+    };
+
+    beforeEach(async () => {
+        jest.clearAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AgencyService,
+                { provide: PrismaService, useValue: mockPrismaService },
+            ],
+        }).compile();
+
+        service = module.get<AgencyService>(AgencyService);
+        prisma = mockPrismaService;
     });
 
-    /**
-     * TC1b: Valid admin without AgencyAdmin record - should create it
-     */
-    it('TC1b: should create AgencyAdmin record if not exists, then create agency', async () => {
-      // Arrange
-      const expectedAgency = {
-        agencyId: 100,
-        agencyAdminId: VALID_ADMIN_WITHOUT_AGENCY,
-        ...validDto,
-      };
+    describe('VALID equivalence classes', () => {
+        it('TC1: [EC1.1, EC2.1] All valid - creates agency successfully', async () => {
+            const mockUser = { role: Role.ADMIN_AGENCY };
+            const mockAdmin = { userId: EC1_1_VALID_ADMIN_NO_AGENCY };
+            const mockCreatedAgency = {
+                agencyId: 10,
+                agencyAdminId: EC1_1_VALID_ADMIN_NO_AGENCY,
+                ...createMockDto(),
+            };
 
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.agencyAdmin.findUnique.mockResolvedValue(mockAdmin);
+            prisma.agency.findUnique
+                .mockResolvedValueOnce(null) // No existing agency for admin
+                .mockResolvedValueOnce(null); // No existing agency with email
+            prisma.agency.create.mockResolvedValue(mockCreatedAgency);
 
-      // AgencyAdmin record does NOT exist
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue(null);
-      mockPrismaService.agencyAdmin.create.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-      });
+            const result = await service.create(
+                EC1_1_VALID_ADMIN_NO_AGENCY,
+                createMockDto()
+            );
 
-      mockPrismaService.agency.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
-
-      mockPrismaService.agency.create.mockResolvedValue(expectedAgency);
-
-      // Act
-      const result = await service.create(VALID_ADMIN_WITHOUT_AGENCY, validDto);
-
-      // Assert
-      expect(result).toEqual(expectedAgency);
-      expect(mockPrismaService.agencyAdmin.create).toHaveBeenCalledWith({
-        data: { userId: VALID_ADMIN_WITHOUT_AGENCY },
-      });
-    });
-  });
-
-  // ============================================================================
-  // INVALID COMBINATIONS - One invalid class + all others valid
-  // ============================================================================
-
-  describe('create - Invalid Combinations', () => {
-    
-    /**
-     * TC2: User does not exist
-     * ┌──────────────────────────────────────────────────────────────┐
-     * │ userId: EC1.2 (not exists) | dto.email: EC2.1 (valid)        │
-     * │ Expected: NotFoundException - User not found                 │
-     * └──────────────────────────────────────────────────────────────┘
-     */
-    it('TC2: should throw NotFoundException when user does not exist', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(
-        service.create(INVALID_USER, validDto)
-      ).rejects.toThrow(NotFoundException);
-
-      await expect(
-        service.create(INVALID_USER, validDto)
-      ).rejects.toThrow('User not found');
+            expect(result).toEqual(mockCreatedAgency);
+            expect(prisma.user.findUnique).toHaveBeenCalledWith({
+                where: { userId: EC1_1_VALID_ADMIN_NO_AGENCY },
+                select: { role: true },
+            });
+            expect(prisma.agency.create).toHaveBeenCalledWith({
+                data: {
+                    agencyAdminId: EC1_1_VALID_ADMIN_NO_AGENCY,
+                    ...createMockDto(),
+                },
+            });
+        });
     });
 
-    /**
-     * TC3: User exists but has wrong role
-     * ┌──────────────────────────────────────────────────────────────┐
-     * │ userId: EC1.3 (wrong role) | dto.email: EC2.1 (valid)        │
-     * │ Expected: ForbiddenException - Only admins can create        │
-     * └──────────────────────────────────────────────────────────────┘
-     */
-    it('TC3: should throw ForbiddenException when user is not ADMIN_AGENCY', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: USER_WITH_WRONG_ROLE,
-        role: 'USER', // Wrong role
-      });
+    describe('INVALID equivalence classes (one invalid, others valid)', () => {
+        it('TC2: [EC1.2, EC2.1] Invalid userId - user not found', async () => {
+            prisma.user.findUnique.mockResolvedValue(null);
 
-      // Act & Assert
-      await expect(
-        service.create(USER_WITH_WRONG_ROLE, validDto)
-      ).rejects.toThrow(ForbiddenException);
+            await expect(
+                service.create(
+                    EC1_2_INVALID_USER_NOT_EXISTS,
+                    createMockDto()
+                )
+            ).rejects.toThrow(NotFoundException);
 
-      await expect(
-        service.create(USER_WITH_WRONG_ROLE, validDto)
-      ).rejects.toThrow('Only admins can create agencies');
-    });
-
-    /**
-     * TC3b: User is AGENT (another wrong role)
-     */
-    it('TC3b: should throw ForbiddenException when user is AGENT', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: USER_WITH_WRONG_ROLE,
-        role: 'AGENT',
-      });
-
-      // Act & Assert
-      await expect(
-        service.create(USER_WITH_WRONG_ROLE, validDto)
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    /**
-     * TC4: Admin already has an agency
-     * ┌──────────────────────────────────────────────────────────────┐
-     * │ userId: EC1.4 (already has agency) | dto.email: EC2.1        │
-     * │ Expected: BadRequestException - already has an agency        │
-     * └──────────────────────────────────────────────────────────────┘
-     */
-    it('TC4: should throw BadRequestException when admin already has an agency', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: ADMIN_WITH_EXISTING_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
-
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue({
-        userId: ADMIN_WITH_EXISTING_AGENCY,
-      });
-
-      // Agency already exists for this admin
-      mockPrismaService.agency.findUnique.mockResolvedValue({
-        agencyId: 50,
-        agencyAdminId: ADMIN_WITH_EXISTING_AGENCY,
-        businessName: 'Existing Agency',
-      });
-
-      // Act & Assert
-      await expect(
-        service.create(ADMIN_WITH_EXISTING_AGENCY, validDto)
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    /**
-     * TC4b: Verify error message for admin with existing agency
-     */
-    it('TC4b: should throw correct message when admin already has an agency', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: ADMIN_WITH_EXISTING_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
-
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue({
-        userId: ADMIN_WITH_EXISTING_AGENCY,
-      });
-
-      mockPrismaService.agency.findUnique.mockResolvedValue({
-        agencyId: 50,
-        agencyAdminId: ADMIN_WITH_EXISTING_AGENCY,
-        businessName: 'Existing Agency',
-      });
-
-      // Act & Assert
-      await expect(
-        service.create(ADMIN_WITH_EXISTING_AGENCY, validDto)
-      ).rejects.toThrow('This admin already has an agency');
-    });
-
-    /**
-     * TC5: Email already used by another agency
-     * ┌──────────────────────────────────────────────────────────────┐
-     * │ userId: EC1.1 (valid admin) | dto.email: EC2.2 (exists)      │
-     * │ Expected: BadRequestException - email already exists         │
-     * └──────────────────────────────────────────────────────────────┘
-     */
-    it('TC5: should throw BadRequestException when email already used', async () => {
-      // Arrange
-      const dtoWithExistingEmail = {
-        ...validDto,
-        email: 'existing@agency.com',
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
-
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-      });
-
-      // No existing agency for this admin, but email already used
-      mockPrismaService.agency.findUnique
-        .mockResolvedValueOnce(null)  // Check by agencyAdminId - OK
-        .mockResolvedValueOnce({      // Check by email - EXISTS!
-          agencyId: 99,
-          email: 'existing@agency.com',
-          businessName: 'Other Agency',
+            expect(prisma.agencyAdmin.findUnique).not.toHaveBeenCalled();
+            expect(prisma.agency.create).not.toHaveBeenCalled();
         });
 
-      // Act & Assert
-      await expect(
-        service.create(VALID_ADMIN_WITHOUT_AGENCY, dtoWithExistingEmail)
-      ).rejects.toThrow(BadRequestException);
-    });
+        it('TC3: [EC1.3, EC2.1] Invalid userId - user not ADMIN_AGENCY', async () => {
+            const mockUser = { role: Role.USER };
+            prisma.user.findUnique.mockResolvedValue(mockUser);
 
-    /**
-     * TC5b: Verify error message for duplicate email
-     */
-    it('TC5b: should throw correct message when email already used', async () => {
-      // Arrange
-      const dtoWithExistingEmail = {
-        ...validDto,
-        email: 'existing@agency.com',
-      };
+            await expect(
+                service.create(
+                    EC1_3_INVALID_USER_NOT_ADMIN,
+                    createMockDto()
+                )
+            ).rejects.toThrow(ForbiddenException);
 
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-        role: 'ADMIN_AGENCY',
-      });
-
-      mockPrismaService.agencyAdmin.findUnique.mockResolvedValue({
-        userId: VALID_ADMIN_WITHOUT_AGENCY,
-      });
-
-      mockPrismaService.agency.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          agencyId: 99,
-          email: 'existing@agency.com',
-          businessName: 'Other Agency',
+            expect(prisma.agencyAdmin.findUnique).not.toHaveBeenCalled();
+            expect(prisma.agency.create).not.toHaveBeenCalled();
         });
 
-      // Act & Assert
-      await expect(
-        service.create(VALID_ADMIN_WITHOUT_AGENCY, dtoWithExistingEmail)
-      ).rejects.toThrow('An agency with this email already exists');
+        it('TC4: [EC1.4, EC2.1] Invalid userId - admin already has agency', async () => {
+            const mockUser = { role: Role.ADMIN_AGENCY };
+            const mockAdmin = { userId: EC1_4_INVALID_ADMIN_HAS_AGENCY };
+            const mockExistingAgency = {
+                agencyId: 5,
+                agencyAdminId: EC1_4_INVALID_ADMIN_HAS_AGENCY,
+            };
+
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.agencyAdmin.findUnique.mockResolvedValue(mockAdmin);
+            prisma.agency.findUnique.mockResolvedValueOnce(mockExistingAgency);
+
+            await expect(
+                service.create(
+                    EC1_4_INVALID_ADMIN_HAS_AGENCY,
+                    createMockDto()
+                )
+            ).rejects.toThrow(BadRequestException);
+
+            expect(prisma.agency.create).not.toHaveBeenCalled();
+        });
+
+        it('TC5: [EC1.1, EC2.2] Invalid email - email already exists', async () => {
+            const mockUser = { role: Role.ADMIN_AGENCY };
+            const mockAdmin = { userId: EC1_1_VALID_ADMIN_NO_AGENCY };
+            const mockExistingAgencyWithEmail = {
+                agencyId: 99,
+                email: EC2_2_INVALID_EMAIL_EXISTS,
+            };
+
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.agencyAdmin.findUnique.mockResolvedValue(mockAdmin);
+            prisma.agency.findUnique
+                .mockResolvedValueOnce(null) // No existing agency for admin
+                .mockResolvedValueOnce(mockExistingAgencyWithEmail); // Email exists
+
+            await expect(
+                service.create(
+                    EC1_1_VALID_ADMIN_NO_AGENCY,
+                    createMockDto({ email: EC2_2_INVALID_EMAIL_EXISTS })
+                )
+            ).rejects.toThrow(BadRequestException);
+
+            expect(prisma.agency.create).not.toHaveBeenCalled();
+        });
     });
-  });
 
-  // ============================================================================
-  // EDGE CASES
-  // ============================================================================
+    describe('Edge cases', () => {
+        it('Creates agencyAdmin record if not exists', async () => {
+            const mockUser = { role: Role.ADMIN_AGENCY };
+            const mockCreatedAdmin = { userId: EC1_1_VALID_ADMIN_NO_AGENCY };
+            const mockCreatedAgency = {
+                agencyId: 10,
+                agencyAdminId: EC1_1_VALID_ADMIN_NO_AGENCY,
+                ...createMockDto(),
+            };
 
-  describe('create - Edge Cases', () => {
-    
-    /**
-     * TC6: User is ASSISTANT (another invalid role)
-     */
-    it('TC6: should throw ForbiddenException when user is ASSISTANT', async () => {
-      // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        userId: USER_WITH_WRONG_ROLE,
-        role: 'ASSISTANT',
-      });
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.agencyAdmin.findUnique.mockResolvedValue(null); // Admin not exists
+            prisma.agencyAdmin.create.mockResolvedValue(mockCreatedAdmin);
+            prisma.agency.findUnique
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+            prisma.agency.create.mockResolvedValue(mockCreatedAgency);
 
-      // Act & Assert
-      await expect(
-        service.create(USER_WITH_WRONG_ROLE, validDto)
-      ).rejects.toThrow(ForbiddenException);
+            const result = await service.create(
+                EC1_1_VALID_ADMIN_NO_AGENCY,
+                createMockDto()
+            );
 
-      await expect(
-        service.create(USER_WITH_WRONG_ROLE, validDto)
-      ).rejects.toThrow('Only admins can create agencies');
+            expect(result).toEqual(mockCreatedAgency);
+            expect(prisma.agencyAdmin.create).toHaveBeenCalledWith({
+                data: { userId: EC1_1_VALID_ADMIN_NO_AGENCY },
+            });
+        });
     });
-  });
 });
-

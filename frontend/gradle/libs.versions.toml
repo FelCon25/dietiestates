@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.0"
+securityCrypto = "1.1.0-alpha06"
 credentials = "1.5.0"
 datastorePreferences = "1.1.7"
 firebaseBom = "34.3.0"
@@ -51,6 +52,9 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 
 #Datastore Preferences
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+
+#Security Crypto
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 #Async images
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }

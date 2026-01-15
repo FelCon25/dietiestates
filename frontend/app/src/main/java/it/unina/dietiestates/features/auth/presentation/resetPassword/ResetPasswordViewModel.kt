@@ -76,7 +76,8 @@ class ResetPasswordViewModel(
                         it.copy(
                             isLoading = false,
                             errorMessage = message,
-                            codeVerified = false
+                            codeVerified = false,
+                            code = "" // Clear the code field when there's an error
                         )
                     }
                 }
@@ -129,7 +130,8 @@ class ResetPasswordViewModel(
                         it.copy(
                             isLoading = false, 
                             errorMessage = message,
-                            codeVerified = false // Go back to code entry if error
+                            codeVerified = false, // Go back to code entry if error
+                            code = "" // Clear the code field when going back
                         )
                     }
                 }

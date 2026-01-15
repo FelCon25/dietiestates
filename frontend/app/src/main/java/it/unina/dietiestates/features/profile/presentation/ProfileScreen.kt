@@ -1,5 +1,8 @@
 package it.unina.dietiestates.features.profile.presentation
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,11 +29,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.House
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,6 +89,7 @@ fun ProfileScreen(
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     var showLogoutAlert by remember { mutableStateOf(false) }
     var showDeleteSessionAlert by remember { mutableStateOf(false) }
@@ -106,7 +116,8 @@ fun ProfileScreen(
         },
         onPermissionDenied = {
             pendingNotificationAction = null
-        }
+        },
+        autoRequest = true // Automatically request permission on first launch
     )
 
     fun requestNotificationWithPermission(action: (Boolean) -> Unit, enabled: Boolean) {
@@ -319,6 +330,77 @@ fun ProfileScreen(
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
+
+                            // Show banner only when permission denied permanently (can't request anymore)
+                            if (!notificationPermissionState.hasPermission && !notificationPermissionState.canRequestPermission) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.NotificationsOff,
+                                            contentDescription = "Notifications off icon",
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "Notifications disabled",
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Text(
+                                                text = "Enable notifications in system settings to receive updates.",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                    }
+
+                                    Button(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp)
+                                            .padding(bottom = 16.dp),
+                                        onClick = {
+                                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.fromParts("package", context.packageName, null)
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                            contentColor = MaterialTheme.colorScheme.errorContainer
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Settings,
+                                            contentDescription = "Settings icon",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Open Settings")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
 
                             Row(
                                 modifier = Modifier

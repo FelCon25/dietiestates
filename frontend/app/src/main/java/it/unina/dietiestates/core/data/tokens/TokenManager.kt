@@ -1,53 +1,51 @@
 package it.unina.dietiestates.core.data.tokens
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import it.unina.dietiestates.core.domain.Tokens
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.withContext
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_tokens")
+class TokenManager(context: Context) {
+    private val _tokenCleared = MutableSharedFlow<Unit>(replay = 0)
 
-class TokenManager(private val context: Context) {
-    private val accessTokenKey = stringPreferencesKey("access_token")
-    private val refreshTokenKey = stringPreferencesKey("refresh_token")
-
-    suspend fun saveTokens(access: String, refresh: String) {
-        context.dataStore.edit { preferences ->
-            preferences[accessTokenKey] = access
-            preferences[refreshTokenKey] = refresh
-        }
+    private val prefs: SharedPreferences by lazy {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            "secure_auth_tokens",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
-    suspend fun getAccessToken(): String? {
-        return context.dataStore.data.first()[accessTokenKey]
+    suspend fun saveTokens(access: String, refresh: String) = withContext(Dispatchers.IO) {
+        prefs.edit().putString("access_token", access).putString("refresh_token", refresh).apply()
     }
 
-    suspend fun getRefreshToken(): String? {
-        return context.dataStore.data.first()[refreshTokenKey]
+    suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
+        prefs.getString("access_token", null)
+    }
+
+    suspend fun getRefreshToken(): String? = withContext(Dispatchers.IO) {
+        prefs.getString("refresh_token", null)
     }
 
     suspend fun clearTokens() {
-        println("Tokens cleared!")
-        context.dataStore.edit { preferences ->
-            preferences.remove(accessTokenKey)
-            preferences.remove(refreshTokenKey)
+        withContext(Dispatchers.IO) {
+            println("Tokens cleared!")
+            prefs.edit().remove("access_token").remove("refresh_token").apply()
         }
+        _tokenCleared.emit(Unit)
     }
 
-    suspend fun onTokenCleared(block: () -> Unit){
-        context.dataStore.data.map { prefs ->
-            val access = prefs[accessTokenKey]
-            val refresh = prefs[refreshTokenKey]
-            if (access != null && refresh != null) Tokens(access, refresh) else null
-        }.collect { tokens ->
-            if (tokens == null){
-                block()
-            }
-        }
+    suspend fun onTokenCleared(block: () -> Unit) {
+        _tokenCleared.collect { block() }
     }
 }

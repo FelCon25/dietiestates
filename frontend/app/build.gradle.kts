@@ -75,6 +75,9 @@ dependencies {
     //Datastore Preferences
     implementation(libs.androidx.datastore.preferences)
 
+    //Encrypted Storage
+    implementation(libs.androidx.security.crypto)
+
     //Async Images
     implementation(libs.bundles.coil)
 

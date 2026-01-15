@@ -48,15 +48,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -110,7 +109,7 @@ fun DrawSearchScreen(
     var sliderPosition by remember { mutableFloatStateOf(initialRadius) }
     var hasSearched by remember { mutableStateOf(false) }
     var nearbyFilters by remember { mutableStateOf(NearbyFilters(insertionType = "SALE")) }
-    var propertyClickCounter by remember { mutableStateOf(0) }
+    var propertyClickCounter by remember { mutableIntStateOf(0) }
     var shouldAnimateToLocation by remember { mutableStateOf(false) }
     var hasRequestedInitialLocation by remember { mutableStateOf(false) }
 
@@ -140,31 +139,27 @@ fun DrawSearchScreen(
 
     LaunchedEffect(centerOnCurrentLocation) {
         if (centerOnCurrentLocation && !hasRequestedInitialLocation) {
-            hasRequestedInitialLocation = true
             locationPermissionState.requestPermission()
         }
     }
 
     LaunchedEffect(currentLocation, shouldAnimateToLocation) {
         if (shouldAnimateToLocation && currentLocation != null) {
-            val location = currentLocation!!
-            val optimalZoom = calculateOptimalZoom(sliderPosition, location.latitude)
+            val optimalZoom = calculateOptimalZoom(sliderPosition, currentLocation.latitude)
             cameraPositionState.animate(
                 CameraUpdateFactory.newLatLngZoom(
-                    LatLng(location.latitude, location.longitude),
+                    LatLng(currentLocation.latitude, currentLocation.longitude),
                     optimalZoom
                 ),
                 durationMs = 500
             )
-            shouldAnimateToLocation = false
         }
     }
 
     val currentCenter by remember { derivedStateOf { cameraPositionState.position.target } }
     val currentZoom by remember { derivedStateOf { cameraPositionState.position.zoom } }
     val showPrice by remember { derivedStateOf { currentZoom >= PRICE_ZOOM_THRESHOLD } }
-    val isMapMoving by remember { derivedStateOf { cameraPositionState.isMoving } }
-    
+
     val clusteredPins by remember(pins) {
         derivedStateOf { clusterPins(pins) }
     }
@@ -195,7 +190,7 @@ fun DrawSearchScreen(
     LaunchedEffect(selectedProperty, propertyClickCounter, isLoadingProperty) {
         if (selectedProperty != null && !isLoadingProperty) {
             bottomSheetState.bottomSheetState.expand()
-        } else if (!isLoadingProperty && selectedProperty == null) {
+        } else if (!isLoadingProperty) {
             bottomSheetState.bottomSheetState.partialExpand()
         }
     }

@@ -9,11 +9,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import it.unina.dietiestates.app.Route
+import it.unina.dietiestates.core.presentation._compontents.NoConnectionScreen
 import it.unina.dietiestates.core.presentation.notification.rememberNotificationPermissionState
 import it.unina.dietiestates.core.presentation.util.ObserveAsEvents
 
@@ -26,6 +28,7 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val view = LocalView.current
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     val notificationPermissionState = rememberNotificationPermissionState()
     
@@ -59,6 +62,16 @@ fun MainScreen(
     Surface(
         modifier = Modifier.fillMaxSize()
     ) {
-        MainNavGraph(navController = navController, viewModel)
+        // Show no connection screen when there's a connection error
+        // This is shown independently of the NavGraph since startDestination might be null
+        if (state.showNoConnection) {
+            NoConnectionScreen(
+                onRetry = {
+                    viewModel.onEvent(MainScreenEvent.OnRetryConnection)
+                }
+            )
+        } else {
+            MainNavGraph(navController = navController, viewModel)
+        }
     }
 }

@@ -347,13 +347,13 @@ describe('AuthService.changePassword - RWECT (Weak Robust ECT)', () => {
 });
 
 // ============================================================================
-// TEST SUITE - R-WECT for validateAndRefreshSession
+// TEST SUITE - R-WECT for processSessionRefresh
 // ============================================================================
 
 /**
- * R-WECT (Weak Robust Equivalence Class Testing) for validateAndRefreshSession
+ * R-WECT (Weak Robust Equivalence Class Testing) for processSessionRefresh
  * 
- * Method: validateAndRefreshSession(dbSession): Promise<{ accessToken, refreshToken }>
+ * Method: processSessionRefresh(sessionId, userId, expiresAt): Promise<{ accessToken, refreshToken }>
  * 
  * EQUIVALENCE CLASSES:
  * ┌─────────────┬───────────────────────────────────────────┬──────────────────────┐
@@ -377,13 +377,13 @@ describe('AuthService.changePassword - RWECT (Weak Robust ECT)', () => {
  * └─────┴───────────┴─────────┴───────────┴──────────────────────────┘
  */
 
-describe('AuthService.validateAndRefreshSession - R-WECT', () => {
+describe('AuthService.processSessionRefresh - R-WECT', () => {
   let service: AuthService;
   let prisma: typeof mockPrismaService;
 
   // EC1: sessionId
   const EC1_1_VALID_SESSION_ID = 100;
-  const EC1_2_INVALID_SESSION_ID = null;
+  const EC1_2_INVALID_SESSION_ID = 999;
 
   // EC2: userId
   const EC2_1_VALID_USER_ID = 1;
@@ -413,18 +413,19 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
     
     it('TC1: [EC1.1, EC2.1, EC3.1] All valid - session far from expiry, no refresh token', async () => {
       // Arrange
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: EC3_1_VALID_EXPIRES_FAR
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
       const mockUser = { role: Role.USER };
 
+      prisma.session.findUnique.mockResolvedValue(mockSession);
       prisma.user.findUnique.mockResolvedValue(mockUser);
       mockJwtService.sign.mockReturnValue('mock-access-token');
 
       // Act
-      const result = await service.validateAndRefreshSession(dbSession);
+      const result = await service.processSessionRefresh(
+        EC1_1_VALID_SESSION_ID,   // EC1.1: VALID
+        EC2_1_VALID_USER_ID,      // EC2.1: VALID
+        EC3_1_VALID_EXPIRES_FAR   // EC3.1: VALID
+      );
 
       // Assert
       expect(result.accessToken).toBe('mock-access-token');
@@ -434,19 +435,20 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
 
     it('TC2: [EC1.1, EC2.1, EC3.2] All valid - session near expiry, generates refresh token', async () => {
       // Arrange
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: EC3_2_VALID_EXPIRES_NEAR
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
       const mockUser = { role: Role.USER };
 
+      prisma.session.findUnique.mockResolvedValue(mockSession);
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.session.update.mockResolvedValue({});
       mockJwtService.sign.mockReturnValue('mock-token');
 
       // Act
-      const result = await service.validateAndRefreshSession(dbSession);
+      const result = await service.processSessionRefresh(
+        EC1_1_VALID_SESSION_ID,    // EC1.1: VALID
+        EC2_1_VALID_USER_ID,       // EC2.1: VALID
+        EC3_2_VALID_EXPIRES_NEAR   // EC3.2: VALID
+      );
 
       // Assert
       expect(result.accessToken).toBe('mock-token');
@@ -462,11 +464,15 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
     
     it('TC3: [EC1.2, EC2.1, EC3.1] Invalid sessionId - session not found', async () => {
       // Arrange
-      const dbSession = EC1_2_INVALID_SESSION_ID;
+      prisma.session.findUnique.mockResolvedValue(null);
 
       // Act & Assert
       await expect(
-        service.validateAndRefreshSession(dbSession as any)
+        service.processSessionRefresh(
+          EC1_2_INVALID_SESSION_ID,  // EC1.2: INVALID
+          EC2_1_VALID_USER_ID,       // EC2.1: VALID
+          EC3_1_VALID_EXPIRES_FAR    // EC3.1: VALID
+        )
       ).rejects.toThrow('Session not found');
       
       expect(prisma.user.findUnique).not.toHaveBeenCalled();
@@ -474,17 +480,18 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
 
     it('TC4: [EC1.1, EC2.2, EC3.1] Invalid userId - user not found', async () => {
       // Arrange
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_2_INVALID_USER_ID,
-        expiresAt: EC3_1_VALID_EXPIRES_FAR
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
 
+      prisma.session.findUnique.mockResolvedValue(mockSession);
       prisma.user.findUnique.mockResolvedValue(null);
 
       // Act & Assert
       await expect(
-        service.validateAndRefreshSession(dbSession)
+        service.processSessionRefresh(
+          EC1_1_VALID_SESSION_ID,    // EC1.1: VALID
+          EC2_2_INVALID_USER_ID,     // EC2.2: INVALID
+          EC3_1_VALID_EXPIRES_FAR    // EC3.1: VALID
+        )
       ).rejects.toThrow('User not found');
       
       expect(prisma.session.update).not.toHaveBeenCalled();
@@ -492,18 +499,22 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
 
     it('TC5: [EC1.1, EC2.1, EC3.3] Invalid expiresAt - session expired', async () => {
       // Arrange
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: EC3_3_INVALID_EXPIRED
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
+      const mockUser = { role: Role.USER };
+
+      prisma.session.findUnique.mockResolvedValue(mockSession);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       // Act & Assert
       await expect(
-        service.validateAndRefreshSession(dbSession)
+        service.processSessionRefresh(
+          EC1_1_VALID_SESSION_ID,    // EC1.1: VALID
+          EC2_1_VALID_USER_ID,       // EC2.1: VALID
+          EC3_3_INVALID_EXPIRED      // EC3.3: INVALID
+        )
       ).rejects.toThrow('Session expired');
       
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.session.update).not.toHaveBeenCalled();
     });
   });
 
@@ -512,18 +523,19 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
     it('Session expires exactly at 7 days - should NOT generate refresh token', async () => {
       // Arrange
       const sevenDaysExactly = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: sevenDaysExactly
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
       const mockUser = { role: Role.USER };
 
+      prisma.session.findUnique.mockResolvedValue(mockSession);
       prisma.user.findUnique.mockResolvedValue(mockUser);
       mockJwtService.sign.mockReturnValue('mock-token');
 
       // Act
-      const result = await service.validateAndRefreshSession(dbSession);
+      const result = await service.processSessionRefresh(
+        EC1_1_VALID_SESSION_ID,
+        EC2_1_VALID_USER_ID,
+        sevenDaysExactly
+      );
 
       // Assert
       expect(result.refreshToken).toBeNull();
@@ -533,19 +545,20 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
     it('Session expires at 6.99 days - should generate refresh token', async () => {
       // Arrange
       const justUnderSevenDays = new Date(Date.now() + 6.99 * 24 * 60 * 60 * 1000);
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: justUnderSevenDays
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
       const mockUser = { role: Role.USER };
 
+      prisma.session.findUnique.mockResolvedValue(mockSession);
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.session.update.mockResolvedValue({});
       mockJwtService.sign.mockReturnValue('mock-token');
 
       // Act
-      const result = await service.validateAndRefreshSession(dbSession);
+      const result = await service.processSessionRefresh(
+        EC1_1_VALID_SESSION_ID,
+        EC2_1_VALID_USER_ID,
+        justUnderSevenDays
+      );
 
       // Assert
       expect(result.refreshToken).not.toBeNull();
@@ -555,15 +568,19 @@ describe('AuthService.validateAndRefreshSession - R-WECT', () => {
     it('Session expires just after now - should throw expired', async () => {
       // Arrange
       const justExpired = new Date(Date.now() - 1);
-      const dbSession = {
-        sessionId: EC1_1_VALID_SESSION_ID,
-        userId: EC2_1_VALID_USER_ID,
-        expiresAt: justExpired
-      };
+      const mockSession = { sessionId: EC1_1_VALID_SESSION_ID };
+      const mockUser = { role: Role.USER };
+
+      prisma.session.findUnique.mockResolvedValue(mockSession);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       // Act & Assert
       await expect(
-        service.validateAndRefreshSession(dbSession)
+        service.processSessionRefresh(
+          EC1_1_VALID_SESSION_ID,
+          EC2_1_VALID_USER_ID,
+          justExpired
+        )
       ).rejects.toThrow('Session expired');
     });
   });

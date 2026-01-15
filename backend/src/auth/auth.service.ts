@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto, LoginDto, RegistrationRole } from './dto';
 import * as bcrypt from 'bcrypt';
@@ -255,12 +255,21 @@ export class AuthService {
             throw new UnauthorizedException('Session expired');
         }
 
-        return this.processSessionRefresh(dbSession);
+        return this.processSessionRefresh(dbSession.sessionId, dbSession.userId, dbSession.expiresAt);
     }
 
-    private async processSessionRefresh(dbSession: { sessionId: number; userId: number; expiresAt: Date }): Promise<{ accessToken: string; refreshToken: string | null }> {
+    async processSessionRefresh(sessionId: number, userId: number, expiresAt: Date): Promise<{ accessToken: string; refreshToken: string | null }> {
+        const session = await this.prisma.session.findUnique({
+            where: { sessionId },
+            select: { sessionId: true }
+        });
+
+        if (!session) {
+            throw new UnauthorizedException('Session not found');
+        }
+
         const user = await this.prisma.user.findUnique({
-            where: { userId: dbSession.userId },
+            where: { userId },
             select: { role: true }
         });
 
@@ -268,20 +277,24 @@ export class AuthService {
             throw new UnauthorizedException('User not found');
         }
 
+        if (expiresAt.getTime() < Date.now()) {
+            throw new UnauthorizedException('Session expired');
+        }
+
         let refreshToken: string | null = null;
         
         const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-        if (dbSession.expiresAt.getTime() - Date.now() < sevenDaysInMs) {
+        if (expiresAt.getTime() - Date.now() < sevenDaysInMs) {
             const newExpiry = new Date(Date.now() + 2592000000);
             await this.prisma.session.update({
-                where: { sessionId: dbSession.sessionId },
+                where: { sessionId },
                 data: { expiresAt: newExpiry }
             });
 
-            refreshToken = this.getRefreshToken(dbSession.sessionId);
+            refreshToken = this.getRefreshToken(sessionId);
         }
 
-        const accessToken = this.getAccessToken(dbSession.userId, dbSession.sessionId, user.role);
+        const accessToken = this.getAccessToken(userId, sessionId, user.role);
 
         return { accessToken, refreshToken };
     }
@@ -460,18 +473,26 @@ export class AuthService {
     }
 
     async deleteSession(sessionId: number, user: AuthUser) {
-        if (user.sessionId === sessionId) {
-            throw new BadRequestException('Cannot delete current session');
-        }
         const session = await this.prisma.session.findUnique({
             where: { sessionId }
         });
+        
         if (!session) {
-            throw new UnauthorizedException('Session not found');
+            throw new NotFoundException('Session not found');
         }
-        return await this.prisma.session.delete({
+
+        const isCurrentSession = user.sessionId === sessionId;
+
+        await this.prisma.session.delete({
             where: { sessionId }
         });
+
+        return { 
+            isCurrentSession,
+            message: isCurrentSession 
+                ? 'Current session deleted successfully' 
+                : 'Session deleted successfully'
+        };
     }
 
     async updateProfilePic(userId: number, profilePic: string) {

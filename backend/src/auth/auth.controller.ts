@@ -126,13 +126,26 @@ export class AuthController {
 
     @UseGuards(AccessTokenGuard)
     @Delete('sessions/:sessionId')
-    async deleteSession(@Param('sessionId') sessionId: string, @Req() req: Request) {
+    async deleteSession(@Param('sessionId') sessionId: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
         const user = req.user as AuthUser;
         const sessionIdNum = Number(sessionId);
 
-        await this.authService.deleteSession(sessionIdNum, user);
-        return { message: 'Session deleted successfully' };
+        const result = await this.authService.deleteSession(sessionIdNum, user);
 
+        if (result.isCurrentSession) {
+            res.clearCookie('accessToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            });
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            });
+        }
+
+        return result;
     }
 
     @UseGuards(AccessTokenGuard)

@@ -193,7 +193,6 @@ export class NewPropertyNotificationService {
   }
 
 
-
   calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
     this.validateCoordinate(lat1, 'lat1', MIN_LATITUDE, MAX_LATITUDE);
     this.validateCoordinate(lon1, 'lon1', MIN_LONGITUDE, MAX_LONGITUDE);

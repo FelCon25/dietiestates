@@ -7,5 +7,6 @@ data class MainScreenState(
     val startDestination: Route? = null,
     val user: User? = null,
     val isReady: Boolean = false,
-    val propertyIdFromNotification: Int? = null
+    val propertyIdFromNotification: Int? = null,
+    val showNoConnection: Boolean = false
 )

@@ -77,81 +77,10 @@ const descriptions = [
   'Meticulously maintained property ready for immediate occupancy. New roof, HVAC, and electrical systems.',
 ];
 
-const propertyImages = [
-  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-  'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800',
-  'https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800',
-  'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
-  'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=800',
-  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800',
-  'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-  'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=800',
-  'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-  'https://images.unsplash.com/photo-1598228723793-52759bba239c?w=800',
-  'https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=800',
-  'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800',
-  'https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?w=800',
-  'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800',
-  'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800',
-  'https://images.unsplash.com/photo-1600607687644-aac4c3eac7f4?w=800',
-  'https://images.unsplash.com/photo-1600585153490-76fb20a32601?w=800',
-  'https://images.unsplash.com/photo-1600573472591-ee6981cf81f4?w=800',
-  'https://images.unsplash.com/photo-1605146769289-440113cc3d00?w=800',
-  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
-  'https://images.unsplash.com/photo-1600047509358-9dc75507daeb?w=800',
-  'https://images.unsplash.com/photo-1600566752734-2a0cd66c42dc?w=800',
-  'https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800',
-  'https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?w=800',
-  'https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=800',
-  'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=800',
-  'https://images.unsplash.com/photo-1600047509782-20d39509f26d?w=800',
-  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
-  'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800',
-  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800',
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-  'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800',
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-  'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-  'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800',
-  'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800',
-  'https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800',
-  'https://images.unsplash.com/photo-1560184897-ae75f418493e?w=800',
-  'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=800',
-  'https://images.unsplash.com/photo-1560449752-3fd4bdbe7df0?w=800',
-  'https://images.unsplash.com/photo-1560448075-bb485b067938?w=800',
-  'https://images.unsplash.com/photo-1560448205-17d3a46c84de?w=800',
-  'https://images.unsplash.com/photo-1560185008-b033106af5c3?w=800',
-  'https://images.unsplash.com/photo-1560184990-4a5f77067f41?w=800',
-  'https://images.unsplash.com/photo-1560185128-cd5e323e622b?w=800',
-  'https://images.unsplash.com/photo-1560185009-dddeb820c7b7?w=800',
-];
-
-const interiorImages = [
-  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800',
-  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800',
-  'https://images.unsplash.com/photo-1616137466211-f939a420be84?w=800',
-  'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800',
-  'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=800',
-  'https://images.unsplash.com/photo-1617104678098-de229db51175?w=800',
-  'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800',
-  'https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800',
-  'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?w=800',
-  'https://images.unsplash.com/photo-1615876234886-fd9a39fda97f?w=800',
-  'https://images.unsplash.com/photo-1616593969747-4797dc75033e?w=800',
-  'https://images.unsplash.com/photo-1617103996702-96ff29b1c467?w=800',
-  'https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800',
-  'https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=800',
-  'https://images.unsplash.com/photo-1617806125688-49b0e5b15e3d?w=800',
-  'https://images.unsplash.com/photo-1617325710236-4a36d46427c2?w=800',
-  'https://images.unsplash.com/photo-1618219740975-d40978bb7378?w=800',
-  'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800',
-  'https://images.unsplash.com/photo-1616486029423-aaa4789e8c9a?w=800',
-  'https://images.unsplash.com/photo-1617098900591-3f90928e8c54?w=800',
-];
+function getDynamicImageUrl(category: 'house' | 'interior', index: number): string {
+  const keyword = category === 'house' ? 'house,exterior' : 'interior,room';
+  return `https://loremflickr.com/800/600/${keyword}?lock=${index}`;
+}
 
 function randomElement<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -325,21 +254,12 @@ async function main() {
     });
     
     const numImages = randomInt(3, 6);
-    const usedImages = new Set<string>();
     
     for (let j = 0; j < numImages; j++) {
-      let imageUrl: string;
-      if (j === 0) {
-        imageUrl = propertyImages[i % propertyImages.length];
-      } else {
-        do {
-          imageUrl = Math.random() > 0.5 
-            ? randomElement(propertyImages) 
-            : randomElement(interiorImages);
-        } while (usedImages.has(imageUrl));
-      }
-      usedImages.add(imageUrl);
-      
+      const imageUrl = j === 0 
+        ? getDynamicImageUrl('house', i) 
+        : getDynamicImageUrl('interior', i * 10 + j); 
+
       await prisma.propertyImage.create({
         data: {
           propertyId: property.propertyId,
@@ -367,6 +287,7 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
 
 
 

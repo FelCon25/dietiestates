@@ -134,18 +134,13 @@ class MainScreenViewModel(
                     when(error){
                         is DataError.Remote.Unauthorized -> {
                             _state.update {
-                                it.copy(startDestination = Route.AuthGraph)
-                            }
-                        }
-                        is DataError.Remote.NoInternet,
-                        is DataError.Remote.Server,
-                        is DataError.Remote.RequestTimeout -> {
-                            _state.update {
-                                it.copy(showNoConnection = true, isReady = true)
+                                it.copy(startDestination = Route.AuthGraph, isReady = true)
                             }
                         }
                         else -> {
-                            println("Error: $error")
+                            _state.update {
+                                it.copy(showNoConnection = true, isReady = true)
+                            }
                         }
                     }
                 }

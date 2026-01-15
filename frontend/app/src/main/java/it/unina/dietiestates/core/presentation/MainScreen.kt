@@ -62,15 +62,13 @@ fun MainScreen(
     Surface(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Show no connection screen when there's a connection error
-        // This is shown independently of the NavGraph since startDestination might be null
         if (state.showNoConnection) {
             NoConnectionScreen(
                 onRetry = {
                     viewModel.onEvent(MainScreenEvent.OnRetryConnection)
                 }
             )
-        } else {
+        } else if (state.startDestination != null) {
             MainNavGraph(navController = navController, viewModel)
         }
     }

@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,7 +47,6 @@ fun NoConnectionScreen(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     
-    // Pulsing animation for the outer ring
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.15f,
@@ -88,50 +86,31 @@ fun NoConnectionScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(32.dp)
         ) {
-            // Animated icon container
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                // Outer pulsing ring
+            Box(contentAlignment = Alignment.Center) {
                 Box(
                     modifier = Modifier
                         .size(160.dp)
                         .scale(pulseScale)
                         .alpha(pulseAlpha)
-                        .background(
-                            color = Green80,
-                            shape = CircleShape
-                        )
+                        .background(color = Green80, shape = CircleShape)
                 )
-                
-                // Middle ring
                 Box(
                     modifier = Modifier
                         .size(130.dp)
-                        .background(
-                            color = Green80.copy(alpha = 0.15f),
-                            shape = CircleShape
-                        )
+                        .background(color = Green80.copy(alpha = 0.15f), shape = CircleShape)
                 )
-                
-                // Inner circle with icon
                 Box(
                     modifier = Modifier
                         .size(100.dp)
                         .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Green80,
-                                    Color(0xFF089950)
-                                )
-                            ),
+                            brush = Brush.linearGradient(colors = listOf(Green80, Color(0xFF089950))),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.CloudOff,
-                        contentDescription = "No connection",
+                        contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = Color.White
                     )
@@ -140,7 +119,6 @@ fun NoConnectionScreen(
             
             Spacer(modifier = Modifier.height(40.dp))
             
-            // Title
             Text(
                 text = "Oops! No connection",
                 fontSize = 24.sp,
@@ -151,7 +129,6 @@ fun NoConnectionScreen(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Subtitle
             Text(
                 text = "It looks like you're offline.\nCheck your internet connection\nor try again later.",
                 fontSize = 15.sp,
@@ -162,12 +139,9 @@ fun NoConnectionScreen(
             
             Spacer(modifier = Modifier.height(36.dp))
             
-            // Retry button
             Button(
                 onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Green80
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = Green80),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .height(52.dp)
